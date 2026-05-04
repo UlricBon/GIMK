@@ -1,0 +1,18 @@
+.moderation-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.moderation-container h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.moderation-content {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  text-align: center;
+  color: #666;
+}
