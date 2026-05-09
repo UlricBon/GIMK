@@ -27,18 +27,24 @@ const ProfileScreen = ({ navigation }) => {
 
   const loadProfile = async () => {
     try {
-      // For web or if no user data, use mock data
-      if (!user) {
+      // Fetch profile from backend API
+      if (user) {
+        const response = await userService.getUserProfile();
+        setProfile(response.data);
+      } else {
+        // Fallback to Redux user data if API fails
         setProfile({
           display_name: 'Regular User',
           email: 'user@gmik.com',
-          completed_tasks_count: 12,
+          completed_tasks_count: 0,
         });
-      } else {
-        setProfile(user);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      // Use Redux data as fallback
+      if (user) {
+        setProfile(user);
+      }
     } finally {
       setLoading(false);
     }

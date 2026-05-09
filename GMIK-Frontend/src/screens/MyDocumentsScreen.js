@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
+import { taskService } from '../services/api';
 
 const MyDocumentsScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
@@ -26,28 +27,12 @@ const MyDocumentsScreen = ({ navigation }) => {
   const fetchMyDocuments = async () => {
     setLoading(true);
     try {
-      // API call to fetch user's documents/tasks would go here
-      const mockDocs = [
-        {
-          id: '1',
-          title: 'Website Redesign',
-          category: 'Design',
-          status: 'active',
-          createdAt: '2024-05-01',
-          applicants: 5,
-          budget: 2000,
-        },
-        {
-          id: '2',
-          title: 'API Integration',
-          category: 'Development',
-          status: 'completed',
-          createdAt: '2024-04-15',
-          applicants: 3,
-          budget: 1500,
-        },
-      ];
-      setDocuments(mockDocs);
+      // Fetch user's tasks from backend API
+      const params = {
+        status: filter === 'all' ? null : filter,
+      };
+      const response = await taskService.getTasks(params);
+      setDocuments(response.data || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {

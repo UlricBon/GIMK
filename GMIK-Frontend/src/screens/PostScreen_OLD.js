@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
-import { taskService } from '../services/api';
 
 const PostScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
@@ -22,29 +21,57 @@ const PostScreen = ({ navigation }) => {
   const [budget, setBudget] = useState('');
   const [category, setCategory] = useState('General');
   const [loading, setLoading] = useState(false);
-  const [feedLoading, setFeedLoading] = useState(true);
   const [postedTask, setPostedTask] = useState(null);
-  const [posts, setPosts] = useState([]);
 
   const categories = ['General', 'Development', 'Design', 'Writing', 'Marketing', 'Other'];
 
-  // Load feed on mount
-  useEffect(() => {
-    loadFeed();
-  }, []);
-
-  const loadFeed = async () => {
-    setFeedLoading(true);
-    try {
-      const response = await taskService.getTasks({ category: 'all', limit: 20 });
-      setPosts(response.data || []);
-    } catch (error) {
-      console.error('Error loading posts:', error);
-      Alert.alert('Error', 'Failed to load posts');
-    } finally {
-      setFeedLoading(false);
-    }
-  };
+  // Mock data for other people's posts
+  const otherPosts = [
+    {
+      id: '1',
+      title: 'Website Redesign Project',
+      description: 'Need a modern website redesign for my e-commerce store.',
+      category: 'Design',
+      budget: '$500-1000',
+      author: 'John Smith',
+      avatar: 'JS',
+      createdAt: '2 days ago',
+      applicants: 3,
+    },
+    {
+      id: '2',
+      title: 'React App Development',
+      description: 'Building a new social media application with React.',
+      category: 'Development',
+      budget: '$1500-2000',
+      author: 'Sarah Johnson',
+      avatar: 'SJ',
+      createdAt: '1 day ago',
+      applicants: 5,
+    },
+    {
+      id: '3',
+      title: 'Content Writing for Blog',
+      description: 'Need 10 blog posts on technology and productivity.',
+      category: 'Writing',
+      budget: '$200-300',
+      author: 'Mike Davis',
+      avatar: 'MD',
+      createdAt: '3 hours ago',
+      applicants: 2,
+    },
+    {
+      id: '4',
+      title: 'Logo Design',
+      description: 'Need a professional logo for my startup company.',
+      category: 'Design',
+      budget: '$300-500',
+      author: 'Emma Wilson',
+      avatar: 'EW',
+      createdAt: '5 hours ago',
+      applicants: 8,
+    },
+  ];
 
   const handlePost = async () => {
     if (!title.trim() || !description.trim()) {
@@ -54,39 +81,36 @@ const PostScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const taskData = {
+      // Simulate API call - create task/post
+      const newTask = {
+        id: Math.random().toString(),
         title,
         description,
         category,
-        budget: budget ? parseFloat(budget) : null,
-      };
-      
-      // Call backend API to create task
-      const response = await taskService.createTask(taskData);
-      const newTask = response.data;
-      
-      setPostedTask({
-        id: newTask.id,
-        title: newTask.title,
-        description: newTask.description,
-        category: newTask.category,
-        budget: newTask.budget ? `$${newTask.budget}` : 'Not specified',
+        budget: budget ? `$${budget}` : 'Not specified',
         author: user?.display_name || 'You',
         createdAt: new Date().toLocaleDateString(),
-      });
+      };
       
+      setPostedTask(newTask);
       setScreen('success');
-      // Refresh feed with new post
-      await loadFeed();
     } catch (error) {
-      console.error('Error creating post:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to create post');
+      Alert.alert('Error', 'Failed to create post');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCreatePost = () => {
+    setTitle('');
+    setDescription('');
+    setBudget('');
+    setCategory('General');
+    setScreen('form');
+  };
+
   const handlePostAnother = () => {
+    setPostedTask(null);
     setScreen('form');
     setTitle('');
     setDescription('');
@@ -95,92 +119,113 @@ const PostScreen = ({ navigation }) => {
   };
 
   const handleViewPost = () => {
-    setScreen('feed');
-    setPostedTask(null);
+    // Navigate to Browse tab to see the post
+    navigation?.navigate?.('Browse') || console.log('Navigate to Browse');
   };
 
   const handleBackToFeed = () => {
     setScreen('feed');
-    setTitle('');
-    setDescription('');
-    setBudget('');
-    setCategory('General');
     setPostedTask(null);
   };
 
-  const PostCard = ({ item }) => (
-    <View style={styles.postCard}>
+  const PostCard = ({ post }) => (
+    <TouchableOpacity style={styles.postCard}>
       <View style={styles.postHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.author?.[0] || 'U'}</Text>
-        </View>
-        <View style={styles.postInfo}>
-          <Text style={styles.postTitle}>{item.title}</Text>
-          <Text style={styles.postAuthor}>{item.author || 'Anonymous'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.postBody}>
-        <Text style={styles.postDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <View style={styles.postMeta}>
-          <View style={styles.categoryTag}>
-            <Text style={styles.categoryTagText}>{item.category}</Text>
+        <View style={styles.authorInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{post.avatar}</Text>
           </View>
-          <Text style={styles.budget}>${item.budget || '0'}</Text>
+          <View>
+            <Text style={styles.authorName}>{post.author}</Text>
+            <Text style={styles.postTime}>{post.createdAt}</Text>
+          </View>
+        </View>
+        <View style={styles.categoryBadge}>
+          <Text style={styles.categoryBadgeText}>{post.category}</Text>
         </View>
       </View>
-    </View>
-  );
-
-  if (feedLoading && screen === 'feed' && posts.length === 0) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <Text style={styles.postTitle}>{post.title}</Text>
+      <Text style={styles.postDescription} numberOfLines={2}>
+        {post.description}
+      </Text>
+      <View style={styles.postFooter}>
+        <Text style={styles.postBudget}>{post.budget}</Text>
+        <View style={styles.applicantsInfo}>
+          <Ionicons name="people" size={14} color="#666" />
+          <Text style={styles.applicantsText}>{post.applicants} applicants</Text>
+        </View>
       </View>
-    );
-  }
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView style={styles.container}>
       {screen === 'feed' ? (
+        // FEED SCREEN
         <>
           <View style={styles.feedHeader}>
-            <Text style={styles.feedTitle}>Discover Tasks</Text>
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => setScreen('form')}
-            >
+            <Text style={styles.feedTitle}>Posts from Others</Text>
+            <TouchableOpacity style={styles.createPostButton} onPress={handleCreatePost}>
               <Ionicons name="add-circle" size={20} color="#fff" />
-              <Text style={styles.createButtonText}>Create Post</Text>
+              <Text style={styles.createPostButtonText}>Create Post</Text>
             </TouchableOpacity>
           </View>
 
-          {feedLoading ? (
-            <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
-          ) : posts.length > 0 ? (
+          <View style={styles.feedContainer}>
             <FlatList
-              data={posts}
-              renderItem={({ item }) => <PostCard item={item} />}
-              keyExtractor={item => item.id?.toString()}
+              data={otherPosts}
+              renderItem={({ item }) => <PostCard post={item} />}
+              keyExtractor={item => item.id}
               scrollEnabled={false}
             />
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="document-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>No posts yet</Text>
-              <Text style={styles.emptySubtext}>Be the first to post a task!</Text>
-            </View>
-          )}
+          </View>
         </>
-      ) : screen === 'form' ? (
+      ) : screen === 'success' ? (
+        // SUCCESS SCREEN
+        <View style={styles.successContainer}>
+          <View style={styles.successIcon}>
+            <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+          </View>
+          <Text style={styles.successTitle}>Post Created Successfully!</Text>
+          <Text style={styles.successSubtitle}>Your task is now live on the platform</Text>
+
+          <View style={styles.postPreview}>
+            <Text style={styles.previewTitle}>{postedTask.title}</Text>
+            <Text style={styles.previewCategory}>{postedTask.category}</Text>
+            <Text style={styles.previewDescription} numberOfLines={2}>
+              {postedTask.description}
+            </Text>
+            <View style={styles.previewFooter}>
+              <Text style={styles.previewBudget}>{postedTask.budget}</Text>
+              <Text style={styles.previewDate}>{postedTask.createdAt}</Text>
+            </View>
+          </View>
+
+          <View style={styles.successActions}>
+            <TouchableOpacity style={styles.primaryButton} onPress={handleViewPost}>
+              <Ionicons name="eye" size={18} color="#fff" />
+              <Text style={styles.primaryButtonText}>View Post</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
+              <Ionicons name="add-circle" size={18} color="#007AFF" />
+              <Text style={styles.secondaryButtonText}>Post Another</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tertiaryButton} onPress={handleBackToFeed}>
+              <Ionicons name="home" size={18} color="#007AFF" />
+              <Text style={styles.tertiaryButtonText}>Back to Feed</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        // FORM SCREEN
         <>
-          <View style={styles.header}>
+          <View style={styles.formHeader}>
             <TouchableOpacity onPress={handleBackToFeed}>
               <Ionicons name="chevron-back" size={24} color="#007AFF" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Create a Post</Text>
+            <Text style={styles.formHeaderTitle}>Create a Post</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -264,39 +309,7 @@ const PostScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </>
-      ) : screen === 'success' ? (
-        <View style={styles.successContainer}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
-          </View>
-          <Text style={styles.successTitle}>Post Created Successfully!</Text>
-          <Text style={styles.successSubtitle}>Your task is now live on the platform</Text>
-
-          <View style={styles.postPreview}>
-            <Text style={styles.previewTitle}>{postedTask.title}</Text>
-            <Text style={styles.previewCategory}>{postedTask.category}</Text>
-            <Text style={styles.previewDescription} numberOfLines={2}>
-              {postedTask.description}
-            </Text>
-            <View style={styles.previewFooter}>
-              <Text style={styles.previewBudget}>{postedTask.budget}</Text>
-              <Text style={styles.previewDate}>{postedTask.createdAt}</Text>
-            </View>
-          </View>
-
-          <View style={styles.successActions}>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleViewPost}>
-              <Ionicons name="eye" size={18} color="#fff" />
-              <Text style={styles.primaryButtonText}>View Feed</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
-              <Ionicons name="add-circle" size={18} color="#007AFF" />
-              <Text style={styles.secondaryButtonText}>Post Another</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
+      )}
     </ScrollView>
   );
 };
@@ -306,51 +319,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  // Feed Screen Styles
   feedHeader: {
-    backgroundColor: '#007AFF',
-    padding: 20,
-    paddingTop: 10,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   feedTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#333',
     marginBottom: 12,
   },
-  createButton: {
-    backgroundColor: '#0056b3',
+  createPostButton: {
+    backgroundColor: '#007AFF',
     flexDirection: 'row',
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  createButtonText: {
+  createPostButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 16,
     marginLeft: 8,
+  },
+  feedContainer: {
+    padding: 12,
   },
   postCard: {
     backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 8,
     borderRadius: 12,
-    overflow: 'hidden',
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#eee',
   },
   postHeader: {
     flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  authorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -359,67 +381,67 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 14,
   },
-  postInfo: {
-    flex: 1,
-  },
-  postTitle: {
-    fontSize: 16,
+  authorName: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
   },
-  postAuthor: {
+  postTime: {
     fontSize: 12,
-    color: '#666',
+    color: '#999',
+    marginTop: 2,
   },
-  postBody: {
-    padding: 16,
-  },
-  postDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  postMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryTag: {
+  categoryBadge: {
     backgroundColor: '#E3F2FD',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
-  categoryTagText: {
-    fontSize: 12,
+  categoryBadgeText: {
+    fontSize: 11,
     fontWeight: '600',
     color: '#007AFF',
   },
-  budget: {
+  postTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  postDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  postFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTopWidth: 1,
+    paddingTopColor: '#f0f0f0',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  postBudget: {
     fontSize: 14,
     fontWeight: '600',
     color: '#4CAF50',
   },
-  emptyState: {
+  applicantsInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 40,
+    gap: 4,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
+  applicantsText: {
+    fontSize: 12,
     color: '#666',
-    marginTop: 16,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  header: {
+  // Form Screen Styles
+  formHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -428,10 +450,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  headerTitle: {
+  formHeaderTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 20,
+    paddingTop: 30,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   form: {
     padding: 20,
@@ -499,6 +536,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Success Screen Styles
   successContainer: {
     flex: 1,
     paddingHorizontal: 20,
@@ -599,6 +637,22 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   secondaryButtonText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  tertiaryButton: {
+    backgroundColor: '#f5f5f5',
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  tertiaryButtonText: {
     color: '#007AFF',
     fontWeight: '600',
     fontSize: 16,

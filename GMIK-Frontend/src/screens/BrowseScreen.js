@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { taskService } from '../services/api';
 
 const BrowseScreen = ({ navigation }) => {
   const [tasks, setTasks] = useState([]);
@@ -27,27 +28,19 @@ const BrowseScreen = ({ navigation }) => {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      // API call to fetch tasks would go here
-      const mockTasks = [
-        {
-          id: '1',
-          title: 'Mobile App Development',
-          category: 'Development',
-          budget: 1500,
-          author: 'John Doe',
-          avatar: 'https://via.placeholder.com/50',
-        },
-        {
-          id: '2',
-          title: 'UI/UX Design',
-          category: 'Design',
-          budget: 800,
-          author: 'Jane Smith',
-          avatar: 'https://via.placeholder.com/50',
-        },
-      ];
-      setTasks(mockTasks);
+      // Fetch tasks from backend API
+      const params = {
+        category: selectedCategory === 'All' ? null : selectedCategory,
+        search: searchQuery || null,
+      };
+      const response = await taskService.getTasks(params);
+      setTasks(response.data || []);
     } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
       console.error('Error fetching tasks:', error);
     } finally {
       setLoading(false);
