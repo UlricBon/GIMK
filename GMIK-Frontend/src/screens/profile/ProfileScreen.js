@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { userService } from '../../services/api';
 import { logout } from '../../redux/authSlice';
@@ -24,8 +26,16 @@ const ProfileScreen = ({ navigation }) => {
 
   const loadProfile = async () => {
     try {
-      const response = await userService.getUserProfile();
-      setProfile(response.data.user);
+      // For web or if no user data, use mock data
+      if (!user) {
+        setProfile({
+          display_name: 'Regular User',
+          email: 'user@gmik.com',
+          completed_tasks_count: 12,
+        });
+      } else {
+        setProfile(user);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -46,20 +56,21 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#007AFF" />;
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        {profile?.profile_picture_url && (
-          <Image
-            source={{ uri: profile.profile_picture_url }}
-            style={styles.profileImage}
-          />
-        )}
-        <Text style={styles.name}>{profile?.display_name}</Text>
-        <Text style={styles.email}>{profile?.email}</Text>
+        <View style={styles.profileImage}>
+          <Text style={styles.avatarText}>{profile?.display_name?.[0] || 'U'}</Text>
+        </View>
+        <Text style={styles.name}>{profile?.display_name || 'User'}</Text>
+        <Text style={styles.email}>{profile?.email || 'user@gmik.com'}</Text>
       </View>
 
       <View style={styles.statsContainer}>
@@ -67,33 +78,75 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.statNumber}>{profile?.completed_tasks_count || 0}</Text>
           <Text style={styles.statLabel}>Tasks Completed</Text>
         </View>
+        <View style={styles.divider} />
+        <View style={styles.statBox}>
+          <Text style={styles.statNumber}>4.8</Text>
+          <Text style={styles.statLabel}>Rating</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.statBox}>
+          <Text style={styles.statNumber}>24</Text>
+          <Text style={styles.statLabel}>Reviews</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account Settings</Text>
+        
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => navigation.navigate('EditProfile')}
+          onPress={() => navigation?.navigate ? navigation.navigate('EditProfile') : console.log('Navigate to EditProfile')}
         >
-          <Text style={styles.menuItemText}>Edit Profile</Text>
+          <Ionicons name="person-circle" size={24} color="#007AFF" />
+          <View style={styles.menuContent}>
+            <Text style={styles.menuItemText}>Edit Profile</Text>
+            <Text style={styles.menuItemSubtext}>Update your personal information</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuItemText}>Payment Methods</Text>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation?.navigate ? navigation.navigate('PaymentMethods') : console.log('Navigate to PaymentMethods')}
+        >
+          <Ionicons name="card" size={24} color="#007AFF" />
+          <View style={styles.menuContent}>
+            <Text style={styles.menuItemText}>Payment Methods</Text>
+            <Text style={styles.menuItemSubtext}>Manage your payment options</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuItemText}>Settings</Text>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation?.navigate ? navigation.navigate('Settings') : console.log('Navigate to Settings')}
+        >
+          <Ionicons name="settings" size={24} color="#007AFF" />
+          <View style={styles.menuContent}>
+            <Text style={styles.menuItemText}>Settings</Text>
+            <Text style={styles.menuItemSubtext}>Customize your preferences</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuItemText}>Help & Support</Text>
+        <TouchableOpacity
+          style={[styles.menuItem, styles.lastMenuItem]}
+          onPress={() => navigation?.navigate ? navigation.navigate('HelpSupport') : console.log('Navigate to HelpSupport')}
+        >
+          <Ionicons name="help-circle" size={24} color="#007AFF" />
+          <View style={styles.menuContent}>
+            <Text style={styles.menuItemText}>Help & Support</Text>
+            <Text style={styles.menuItemSubtext}>Get help and contact us</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out" size={20} color="#fff" />
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -114,12 +167,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginBottom: 12,
-    backgroundColor: '#ddd',
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   name: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: '#333',
   },
   email: {
     fontSize: 14,
@@ -127,13 +188,19 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     padding: 20,
     backgroundColor: '#fff',
     marginBottom: 10,
   },
   statBox: {
     alignItems: 'center',
+    flex: 1,
+  },
+  divider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#eee',
   },
   statNumber: {
     fontSize: 24,
@@ -149,14 +216,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 10,
   },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    textTransform: 'uppercase',
+  },
   menuItem: {
+    flexDirection: 'row',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  lastMenuItem: {
+    borderBottomWidth: 0,
+  },
+  menuContent: {
+    flex: 1,
+    marginHorizontal: 12,
   },
   menuItemText: {
     fontSize: 16,
+    fontWeight: '500',
     color: '#333',
+    marginBottom: 2,
+  },
+  menuItemSubtext: {
+    fontSize: 12,
+    color: '#999',
   },
   logoutButton: {
     backgroundColor: '#FF3B30',
@@ -164,11 +255,14 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   logoutButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
+    marginLeft: 8,
   },
 });
 

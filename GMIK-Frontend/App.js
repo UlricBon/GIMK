@@ -11,6 +11,10 @@ import ProfileScreen from './src/screens/profile/ProfileScreen';
 import PostScreen from './src/screens/PostScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import MyDocumentsScreen from './src/screens/MyDocumentsScreen';
+import EditProfileScreen from './src/screens/profile/EditProfileScreen';
+import PaymentMethodsScreen from './src/screens/profile/PaymentMethodsScreen';
+import SettingsScreen from './src/screens/profile/SettingsScreen';
+import HelpSupportScreen from './src/screens/profile/HelpSupportScreen';
 
 // Try to import native navigation
 let NavigationContainer, createNativeStackNavigator, createBottomTabNavigator;
@@ -42,6 +46,7 @@ if (!isWeb) {
 // ============ WEB VERSION ============
 const WebAppContent = () => {
   const [currentScreen, setCurrentScreen] = useState('Login');
+  const [profileScreen, setProfileScreen] = useState(null);
   const { isLoggedIn } = useSelector(state => state.auth);
 
   if (!isLoggedIn) {
@@ -56,6 +61,36 @@ const WebAppContent = () => {
     );
   }
 
+  // Handle profile sub-screens
+  if (profileScreen === 'EditProfile') {
+    return (
+      <View style={styles.appContainer}>
+        <EditProfileScreen navigation={{ goBack: () => setProfileScreen(null) }} />
+      </View>
+    );
+  }
+  if (profileScreen === 'PaymentMethods') {
+    return (
+      <View style={styles.appContainer}>
+        <PaymentMethodsScreen navigation={{ goBack: () => setProfileScreen(null) }} />
+      </View>
+    );
+  }
+  if (profileScreen === 'Settings') {
+    return (
+      <View style={styles.appContainer}>
+        <SettingsScreen navigation={{ goBack: () => setProfileScreen(null) }} />
+      </View>
+    );
+  }
+  if (profileScreen === 'HelpSupport') {
+    return (
+      <View style={styles.appContainer}>
+        <HelpSupportScreen navigation={{ goBack: () => setProfileScreen(null) }} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.appContainer}>
       <View style={styles.header}>
@@ -66,7 +101,7 @@ const WebAppContent = () => {
         {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: () => setCurrentScreen('TaskDetails') }} />}
         {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: () => {} }} />}
         {currentScreen === 'Chat' && <ChatScreen navigation={{ navigate: () => {} }} />}
-        {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen) }} />}
       </View>
       <View style={styles.navbar}>
         {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map(tab => (
