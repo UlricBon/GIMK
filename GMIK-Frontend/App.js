@@ -45,7 +45,7 @@ if (!isWeb) {
 
 // ============ WEB VERSION ============
 const WebAppContent = () => {
-  const [currentScreen, setCurrentScreen] = useState('Login');
+  const [currentScreen, setCurrentScreen] = useState('Post');
   const [profileScreen, setProfileScreen] = useState(null);
   const { isLoggedIn } = useSelector(state => state.auth);
 
