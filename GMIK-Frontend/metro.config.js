@@ -2,11 +2,9 @@
  * Metro configuration for GMIK Frontend
  * Configures the React Native bundler
  */
-module.exports = {
-  project: {
-    ios: {},
-    android: {},
-  },
+const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+
+const config = {
   transformer: {
     getTransformOptions: async () => ({
       transform: {
@@ -16,3 +14,5 @@ module.exports = {
     }),
   },
 };
+
+module.exports = mergeConfig(getDefaultConfig(__dirname), config);

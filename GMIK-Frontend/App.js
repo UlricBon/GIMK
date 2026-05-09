@@ -1,62 +1,144 @@
-import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider } from 'react-redux';
-import { store } from './redux/store';
-import SplashScreen from './screens/SplashScreen';
-import LoginScreen from './screens/auth/LoginScreen';
-import RegisterScreen from './screens/auth/RegisterScreen';
-import TaskFeedScreen from './screens/tasks/TaskFeedScreen';
-import TaskDetailsScreen from './screens/tasks/TaskDetailsScreen';
-import CreateTaskScreen from './screens/tasks/CreateTaskScreen';
-import ChatScreen from './screens/chat/ChatScreen';
-import ProfileScreen from './screens/profile/ProfileScreen';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Provider, useSelector } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
+import { store } from './src/redux/store';
+import LoginScreen from './src/screens/auth/LoginScreen';
+import RegisterScreen from './src/screens/auth/RegisterScreen';
+import TaskDetailsScreen from './src/screens/tasks/TaskDetailsScreen';
+import ChatScreen from './src/screens/chat/ChatScreen';
+import ProfileScreen from './src/screens/profile/ProfileScreen';
+import PostScreen from './src/screens/PostScreen';
+import BrowseScreen from './src/screens/BrowseScreen';
+import MyDocumentsScreen from './src/screens/MyDocumentsScreen';
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+// Try to import native navigation
+let NavigationContainer, createNativeStackNavigator, createBottomTabNavigator;
+try {
+  const nav = require('@react-navigation/native');
+  NavigationContainer = nav.NavigationContainer;
+  createNativeStackNavigator = require('@react-navigation/native-stack').createNativeStackNavigator;
+  createBottomTabNavigator = require('@react-navigation/bottom-tabs').createBottomTabNavigator;
+} catch (e) {
+  NavigationContainer = ({ children }) => <View>{children}</View>;
+  createNativeStackNavigator = () => ({
+    Navigator: ({ children }) => <View>{children}</View>,
+    Screen: ({ component: Component }) => <Component />,
+  });
+  createBottomTabNavigator = () => ({
+    Navigator: ({ children }) => <View>{children}</View>,
+    Screen: ({ component: Component }) => <Component />,
+  });
+}
 
-const AuthStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-      animationEnabled: true,
-    }}
-  >
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-  </Stack.Navigator>
-);
+const isWeb = Platform.OS === 'web' || typeof document !== 'undefined';
 
+let Stack = null, Tab = null;
+if (!isWeb) {
+  Stack = createNativeStackNavigator();
+  Tab = createBottomTabNavigator();
+}
+
+// ============ WEB VERSION ============
+const WebAppContent = () => {
+  const [currentScreen, setCurrentScreen] = useState('Login');
+  const { isLoggedIn } = useSelector(state => state.auth);
+
+  if (!isLoggedIn) {
+    return (
+      <View style={styles.webContainer}>
+        {currentScreen === 'Login' ? (
+          <LoginScreen navigation={{ navigate: () => setCurrentScreen('Register'), setOptions: () => {} }} />
+        ) : (
+          <RegisterScreen navigation={{ navigate: () => setCurrentScreen('Login'), setOptions: () => {} }} />
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.appContainer}>
+      <View style={styles.header}>
+        <Text style={styles.title}>GMIK</Text>
+      </View>
+      <View style={styles.content}>
+        {currentScreen === 'Post' && <PostScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: () => setCurrentScreen('TaskDetails') }} />}
+        {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Chat' && <ChatScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: () => {} }} />}
+      </View>
+      <View style={styles.navbar}>
+        {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map(tab => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.navButton, currentScreen === tab && styles.navButtonActive]}
+            onPress={() => setCurrentScreen(tab)}
+          >
+            <Text style={[styles.navButtonText, currentScreen === tab && styles.navButtonTextActive]}>
+              {tab === 'MyDocuments' ? 'My Docs' : tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ============ NATIVE VERSION ============
 const TaskTabs = () => (
   <Tab.Navigator
-    screenOptions={{
+    screenOptions={({ route }) => ({
       headerShown: true,
       tabBarActiveTintColor: '#007AFF',
-    }}
+      tabBarInactiveTintColor: '#999',
+      tabBarIcon: ({ color, size }) => {
+        let iconName;
+        if (route.name === 'Post') {
+          iconName = 'add-circle';
+        } else if (route.name === 'Browse') {
+          iconName = 'search';
+        } else if (route.name === 'MyDocuments') {
+          iconName = 'document-text';
+        } else if (route.name === 'Chat') {
+          iconName = 'chatbubbles';
+        } else if (route.name === 'Profile') {
+          iconName = 'person';
+        }
+        return <Ionicons name={iconName} size={size} color={color} />;
+      },
+    })}
   >
     <Tab.Screen
-      name="Feed"
-      component={TaskFeedScreen}
+      name="Post"
+      component={PostScreen}
       options={{
-        tabBarLabel: 'Find Tasks',
-        headerTitle: 'Task Feed',
+        tabBarLabel: 'Post',
+        headerTitle: 'Create Post',
       }}
     />
     <Tab.Screen
-      name="CreateTask"
-      component={CreateTaskScreen}
+      name="Browse"
+      component={BrowseScreen}
       options={{
-        tabBarLabel: 'Post Task',
-        headerTitle: 'Create Task',
+        tabBarLabel: 'Browse',
+        headerTitle: 'Browse Posts',
+      }}
+    />
+    <Tab.Screen
+      name="MyDocuments"
+      component={MyDocumentsScreen}
+      options={{
+        tabBarLabel: 'My Documents',
+        headerTitle: 'My Documents',
       }}
     />
     <Tab.Screen
       name="Chat"
       component={ChatScreen}
       options={{
-        tabBarLabel: 'Messages',
-        headerTitle: 'Chat',
+        tabBarLabel: 'Chat',
+        headerTitle: 'Messages',
       }}
     />
     <Tab.Screen
@@ -68,6 +150,18 @@ const TaskTabs = () => (
       }}
     />
   </Tab.Navigator>
+);
+
+const AuthStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+      animationEnabled: true,
+    }}
+  >
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Register" component={RegisterScreen} />
+  </Stack.Navigator>
 );
 
 const AppStack = () => (
@@ -85,11 +179,9 @@ const AppStack = () => (
   </Stack.Navigator>
 );
 
-const RootNavigator = ({ isLoading, isLoggedIn }) => {
-  if (isLoading) {
-    return <SplashScreen />;
-  }
-
+const NativeAppContent = () => {
+  const { isLoggedIn } = useSelector(state => state.auth);
+  
   return (
     <NavigationContainer>
       {isLoggedIn ? <AppStack /> : <AuthStack />}
@@ -97,10 +189,78 @@ const RootNavigator = ({ isLoading, isLoggedIn }) => {
   );
 };
 
+// ============ MAIN APP ============
 export default function App() {
+  if (isWeb) {
+    return (
+      <Provider store={store}>
+        <WebAppContent />
+      </Provider>
+    );
+  }
+
   return (
     <Provider store={store}>
-      <RootNavigator />
+      <NativeAppContent />
     </Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  webContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  content: {
+    flex: 1,
+    overflow: 'auto',
+  },
+  navbar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    height: 60,
+  },
+  navButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  navButtonActive: {
+    borderBottomColor: '#007AFF',
+  },
+  navButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  navButtonTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+});
