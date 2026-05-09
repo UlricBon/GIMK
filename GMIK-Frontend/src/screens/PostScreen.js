@@ -37,7 +37,7 @@ const PostScreen = ({ navigation }) => {
     setFeedLoading(true);
     try {
       const response = await taskService.getTasks({ category: 'all', limit: 20 });
-      setPosts(response.data || []);
+      setPosts(response.data?.tasks || []);
     } catch (error) {
       console.error('Error loading posts:', error);
       Alert.alert('Error', 'Failed to load posts');
@@ -58,19 +58,24 @@ const PostScreen = ({ navigation }) => {
         title,
         description,
         category,
-        budget: budget ? parseFloat(budget) : null,
+        compensation: budget ? parseFloat(budget) : 0,
+        // Mock location data (in production, get user's actual location)
+        latitude: 40.7128,
+        longitude: -74.0060,
+        address: 'New York, NY',
+        urgency: 'normal',
       };
       
       // Call backend API to create task
       const response = await taskService.createTask(taskData);
-      const newTask = response.data;
+      const newTask = response.data.task;
       
       setPostedTask({
         id: newTask.id,
         title: newTask.title,
         description: newTask.description,
         category: newTask.category,
-        budget: newTask.budget ? `$${newTask.budget}` : 'Not specified',
+        budget: newTask.compensation ? `$${newTask.compensation}` : 'Not specified',
         author: user?.display_name || 'You',
         createdAt: new Date().toLocaleDateString(),
       });

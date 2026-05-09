@@ -7,6 +7,7 @@ import { store } from './src/redux/store';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import TaskDetailsScreen from './src/screens/tasks/TaskDetailsScreen';
+import EditTaskScreen from './src/screens/tasks/EditTaskScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
 import PostScreen from './src/screens/PostScreen';
@@ -48,14 +49,14 @@ if (!isWeb) {
 const WebAppContent = () => {
   const [currentScreen, setCurrentScreen] = useState('Login');
   const [profileScreen, setProfileScreen] = useState(null);
+  const [taskDetailsId, setTaskDetailsId] = useState(null);
+  const [editTaskId, setEditTaskId] = useState(null);
   const [initialized, setInitialized] = useState(false);
   const { isLoggedIn } = useSelector(state => state.auth);
 
-  // Initialize app - reset to Login on first load
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Always start at Login screen
         setCurrentScreen('Login');
         setProfileScreen(null);
       } catch (error) {
@@ -67,16 +68,16 @@ const WebAppContent = () => {
     initializeApp();
   }, []);
 
-  // Watch for logout and reset screens
   useEffect(() => {
     console.log('isLoggedIn state changed:', isLoggedIn);
     if (!isLoggedIn) {
       console.log('User logged out - resetting to Login screen');
       setCurrentScreen('Login');
       setProfileScreen(null);
+      setTaskDetailsId(null);
+      setEditTaskId(null);
     } else if (isLoggedIn && currentScreen === 'Login') {
       console.log('User logged in - switching to Post screen');
-      // After successful login, switch to Post tab
       setCurrentScreen('Post');
     }
   }, [isLoggedIn]);
@@ -93,7 +94,6 @@ const WebAppContent = () => {
     );
   }
 
-  // Handle profile sub-screens
   if (profileScreen === 'EditProfile') {
     return (
       <View style={styles.appContainer}>
@@ -122,6 +122,26 @@ const WebAppContent = () => {
       </View>
     );
   }
+  if (taskDetailsId) {
+    return (
+      <View style={styles.appContainer}>
+        <TaskDetailsScreen
+          route={{ params: { taskId: taskDetailsId } }}
+          navigation={{ goBack: () => setTaskDetailsId(null) }}
+        />
+      </View>
+    );
+  }
+  if (editTaskId) {
+    return (
+      <View style={styles.appContainer}>
+        <EditTaskScreen
+          route={{ params: { taskId: editTaskId } }}
+          navigation={{ goBack: () => setEditTaskId(null) }}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.appContainer}>
@@ -130,13 +150,13 @@ const WebAppContent = () => {
       </View>
       <View style={styles.content}>
         {currentScreen === 'Post' && <PostScreen navigation={{ navigate: () => {} }} />}
-        {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: () => setCurrentScreen('TaskDetails') }} />}
-        {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: (screen, params) => { if (screen === 'TaskDetails') setTaskDetailsId(params.taskId); } }} />}
+        {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: (screen, params) => { if (screen === 'TaskDetails') setTaskDetailsId(params.taskId); if (screen === 'EditTask') setEditTaskId(params.taskId); } }} />}
         {currentScreen === 'Chat' && <ChatScreen navigation={{ navigate: () => {} }} />}
         {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen), logout: () => { setCurrentScreen('Login'); setProfileScreen(null); } }} />}
       </View>
       <View style={styles.navbar}>
-        {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map(tab => (
+        {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.navButton, currentScreen === tab && styles.navButtonActive]}
@@ -242,6 +262,11 @@ const AppStack = () => (
       name="TaskDetails"
       component={TaskDetailsScreen}
       options={{ title: 'Task Details' }}
+    />
+    <Stack.Screen
+      name="EditTask"
+      component={EditTaskScreen}
+      options={{ title: 'Edit Task' }}
     />
   </Stack.Navigator>
 );

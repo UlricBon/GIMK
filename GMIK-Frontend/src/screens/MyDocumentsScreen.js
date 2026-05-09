@@ -27,12 +27,12 @@ const MyDocumentsScreen = ({ navigation }) => {
   const fetchMyDocuments = async () => {
     setLoading(true);
     try {
-      // Fetch user's tasks from backend API
+      // Fetch user's own tasks from backend API
       const params = {
         status: filter === 'all' ? null : filter,
       };
-      const response = await taskService.getTasks(params);
-      setDocuments(response.data || []);
+      const response = await taskService.getUserTasks(params);
+      setDocuments(response.data?.tasks || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
@@ -46,21 +46,42 @@ const MyDocumentsScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const handleDeleteDocument = (docId) => {
+  const handleDeleteDocument = async (docId) => {
+    console.log('Delete requested for task:', docId);
     Alert.alert(
-      'Delete Document',
-      'Are you sure you want to delete this document?',
+      'Delete Task',
+      'Are you sure you want to delete this task? This action cannot be undone.',
       [
-        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Cancel',
+          onPress: () => {
+            console.log('Delete cancelled');
+          },
+          style: 'cancel',
+        },
         {
           text: 'Delete',
-          onPress: () => {
-            setDocuments(documents.filter(doc => doc.id !== docId));
-            Alert.alert('Success', 'Document deleted successfully');
+          onPress: async () => {
+            try {
+              console.log('Confirming delete for task:', docId);
+              const response = await taskService.deleteTask(docId);
+              console.log('Delete response:', response);
+              setDocuments(documents.filter(doc => doc.id !== docId));
+              Alert.alert('Success', 'Task deleted successfully');
+            } catch (error) {
+              console.error('Delete error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+              });
+              const errorMessage = error.response?.data?.error || error.message || 'Failed to delete task';
+              Alert.alert('Error', errorMessage);
+            }
           },
           style: 'destructive',
         },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
@@ -114,15 +135,21 @@ const MyDocumentsScreen = ({ navigation }) => {
           onPress={() => navigation.navigate('TaskDetails', { taskId: document.id })}
         >
           <Ionicons name="eye" size={18} color="#007AFF" />
+          <Text style={styles.actionLabel}>View</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('EditTask', { taskId: document.id })}
+        >
           <Ionicons name="pencil" size={18} color="#FF9800" />
+          <Text style={styles.actionLabel}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleDeleteDocument(document.id)}
         >
           <Ionicons name="trash" size={18} color="#f44336" />
+          <Text style={styles.actionLabel}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -290,7 +317,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
   },
   actionButton: {
-    padding: 8,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  actionLabel: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+    fontWeight: '500',
   },
   centerContainer: {
     flex: 1,

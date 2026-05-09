@@ -11,11 +11,30 @@ const apiClient = axios.create({
 // Add token to requests
 apiClient.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('accessToken');
+  console.log('API Request:', config.method?.toUpperCase(), config.url, 'Token:', token ? 'YES' : 'NO');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Log responses and errors
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log('API Response:', response.status, response.config.url);
+    return response;
+  },
+  (error) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data,
+    });
+    return Promise.reject(error);
+  }
+);
 
 export const authService = {
   register: (email, password, displayName) =>
@@ -29,10 +48,14 @@ export const authService = {
 export const taskService = {
   getTasks: (params) =>
     apiClient.get('/tasks', { params }),
+  getUserTasks: (params) =>
+    apiClient.get('/tasks/user-tasks', { params }),
   getTaskById: (taskId) =>
     apiClient.get(`/tasks/${taskId}`),
   createTask: (taskData) =>
     apiClient.post('/tasks', taskData),
+  updateTask: (taskId, taskData) =>
+    apiClient.put(`/tasks/${taskId}`, taskData),
   acceptTask: (taskId) =>
     apiClient.post(`/tasks/${taskId}/accept`),
   updateTaskStatus: (taskId, status) =>

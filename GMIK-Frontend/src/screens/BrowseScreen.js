@@ -34,13 +34,8 @@ const BrowseScreen = ({ navigation }) => {
         search: searchQuery || null,
       };
       const response = await taskService.getTasks(params);
-      setTasks(response.data || []);
+      setTasks(response.data?.tasks || []);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
       console.error('Error fetching tasks:', error);
     } finally {
       setLoading(false);
