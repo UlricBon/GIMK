@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from './src/redux/store';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
@@ -47,9 +48,26 @@ if (!isWeb) {
 const WebAppContent = () => {
   const [currentScreen, setCurrentScreen] = useState('Login');
   const [profileScreen, setProfileScreen] = useState(null);
+  const [initialized, setInitialized] = useState(false);
   const { isLoggedIn } = useSelector(state => state.auth);
 
-  // Reset to Login when logged out or page refreshes
+  // Initialize app - reset to Login on first load
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Always start at Login screen
+        setCurrentScreen('Login');
+        setProfileScreen(null);
+      } catch (error) {
+        console.error('Init error:', error);
+      } finally {
+        setInitialized(true);
+      }
+    };
+    initializeApp();
+  }, []);
+
+  // Watch for logout and reset screens
   useEffect(() => {
     if (!isLoggedIn) {
       setCurrentScreen('Login');

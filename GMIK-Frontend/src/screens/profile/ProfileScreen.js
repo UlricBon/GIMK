@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../../services/api';
 import { logout } from '../../redux/authSlice';
 
@@ -48,8 +49,16 @@ const ProfileScreen = ({ navigation }) => {
       { text: 'Cancel', onPress: () => {} },
       {
         text: 'Logout',
-        onPress: () => {
-          dispatch(logout());
+        onPress: async () => {
+          try {
+            // Clear AsyncStorage
+            await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+            // Dispatch logout action
+            dispatch(logout());
+          } catch (error) {
+            console.error('Logout error:', error);
+            dispatch(logout());
+          }
         },
       },
     ]);
