@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Provider, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,9 +45,20 @@ if (!isWeb) {
 
 // ============ WEB VERSION ============
 const WebAppContent = () => {
-  const [currentScreen, setCurrentScreen] = useState('Post');
+  const [currentScreen, setCurrentScreen] = useState('Login');
   const [profileScreen, setProfileScreen] = useState(null);
   const { isLoggedIn } = useSelector(state => state.auth);
+
+  // Reset to Login when logged out or page refreshes
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setCurrentScreen('Login');
+      setProfileScreen(null);
+    } else if (isLoggedIn && currentScreen === 'Login') {
+      // After successful login, switch to Post tab
+      setCurrentScreen('Post');
+    }
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) {
     return (
