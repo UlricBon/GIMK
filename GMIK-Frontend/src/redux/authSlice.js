@@ -24,9 +24,11 @@ const authSlice = createSlice({
       state.error = action.payload;
     },
     logout: (state) => {
+      console.log('Redux logout action called');
       state.user = null;
       state.token = null;
       state.isLoggedIn = false;
+      console.log('Redux state after logout:', state);
     },
   },
 });

@@ -69,10 +69,13 @@ const WebAppContent = () => {
 
   // Watch for logout and reset screens
   useEffect(() => {
+    console.log('isLoggedIn state changed:', isLoggedIn);
     if (!isLoggedIn) {
+      console.log('User logged out - resetting to Login screen');
       setCurrentScreen('Login');
       setProfileScreen(null);
     } else if (isLoggedIn && currentScreen === 'Login') {
+      console.log('User logged in - switching to Post screen');
       // After successful login, switch to Post tab
       setCurrentScreen('Post');
     }
@@ -130,7 +133,7 @@ const WebAppContent = () => {
         {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: () => setCurrentScreen('TaskDetails') }} />}
         {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: () => {} }} />}
         {currentScreen === 'Chat' && <ChatScreen navigation={{ navigate: () => {} }} />}
-        {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen) }} />}
+        {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen), logout: () => { setCurrentScreen('Login'); setProfileScreen(null); } }} />}
       </View>
       <View style={styles.navbar}>
         {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map(tab => (

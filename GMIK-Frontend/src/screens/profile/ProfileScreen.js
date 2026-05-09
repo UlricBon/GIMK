@@ -51,13 +51,24 @@ const ProfileScreen = ({ navigation }) => {
         text: 'Logout',
         onPress: async () => {
           try {
+            console.log('Logout confirmed - clearing storage');
             // Clear AsyncStorage
             await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+            console.log('Storage cleared - dispatching logout action');
             // Dispatch logout action
             dispatch(logout());
+            console.log('Logout action dispatched - navigating to login');
+            // Navigate to login
+            if (navigation?.logout) {
+              navigation.logout();
+            }
           } catch (error) {
             console.error('Logout error:', error);
+            // Dispatch logout even if storage clear fails
             dispatch(logout());
+            if (navigation?.logout) {
+              navigation.logout();
+            }
           }
         },
       },
@@ -151,7 +162,11 @@ const ProfileScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <TouchableOpacity 
+        style={styles.logoutButton} 
+        onPress={handleLogout}
+        activeOpacity={0.7}
+      >
         <Ionicons name="log-out" size={20} color="#fff" />
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
