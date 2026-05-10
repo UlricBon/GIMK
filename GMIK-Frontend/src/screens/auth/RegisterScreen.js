@@ -8,7 +8,9 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import { authService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -16,6 +18,9 @@ const RegisterScreen = ({ navigation }) => {
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
 
   const handleRegister = async () => {
     if (!email || !password || !displayName || !confirmPassword) {
@@ -50,20 +55,36 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.primary }]}>Create Account</Text>
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
         placeholder="Display Name"
+        placeholderTextColor={theme.textTertiary}
         value={displayName}
         onChangeText={setDisplayName}
         editable={!loading}
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
         placeholder="Email"
+        placeholderTextColor={theme.textTertiary}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -71,8 +92,16 @@ const RegisterScreen = ({ navigation }) => {
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
         placeholder="Password"
+        placeholderTextColor={theme.textTertiary}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -80,8 +109,16 @@ const RegisterScreen = ({ navigation }) => {
       />
 
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
         placeholder="Confirm Password"
+        placeholderTextColor={theme.textTertiary}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
@@ -89,7 +126,7 @@ const RegisterScreen = ({ navigation }) => {
       />
 
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, { backgroundColor: theme.primary }, loading && styles.buttonDisabled]}
         onPress={handleRegister}
         disabled={loading}
       >
@@ -99,7 +136,7 @@ const RegisterScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
-        <Text style={styles.link}>Already have an account? Login</Text>
+        <Text style={[styles.link, { color: theme.primary }]}>Already have an account? Login</Text>
       </TouchableOpacity>
     </ScrollView>
   );

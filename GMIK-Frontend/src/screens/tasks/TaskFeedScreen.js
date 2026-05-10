@@ -12,9 +12,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { taskService } from '../../services/api';
 import { setTasks, setLoading, setFilters } from '../../redux/taskSlice';
 import TaskCard from '../../components/TaskCard';
+import { getTheme } from '../../utils/theme';
 
 const TaskFeedScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const { tasks, isLoading, filters } = useSelector(state => state.tasks);
   const [searchText, setSearchText] = useState('');
   const [location, setLocation] = useState(null);

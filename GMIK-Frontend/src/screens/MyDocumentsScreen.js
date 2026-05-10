@@ -14,9 +14,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { taskService } from '../services/api';
+import { getTheme } from '../utils/theme';
 
 const MyDocumentsScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,10 +112,10 @@ const MyDocumentsScreen = ({ navigation }) => {
   });
 
   const DocumentCard = ({ document }) => (
-    <View style={styles.documentCard}>
+    <View style={[styles.documentCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <View style={styles.documentContent}>
         <View style={styles.documentHeader}>
-          <Text style={styles.documentTitle}>{document.title}</Text>
+          <Text style={[styles.documentTitle, { color: theme.text }]}>{document.title}</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(document.status) }]}>
             <Text style={styles.statusText}>{document.status.toUpperCase()}</Text>
           </View>
@@ -120,60 +123,61 @@ const MyDocumentsScreen = ({ navigation }) => {
 
         <View style={styles.documentMeta}>
           <View style={styles.metaItem}>
-            <Ionicons name="pricetag" size={14} color="#007AFF" />
-            <Text style={styles.metaText}>{document.category}</Text>
+            <Ionicons name="pricetag" size={14} color={theme.primary} />
+            <Text style={[styles.metaText, { color: theme.textTertiary }]}>{document.category}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Ionicons name="people" size={14} color="#007AFF" />
-            <Text style={styles.metaText}>{document.applicants} applicants</Text>
+            <Ionicons name="people" size={14} color={theme.primary} />
+            <Text style={[styles.metaText, { color: theme.textTertiary }]}>{document.applicants} applicants</Text>
           </View>
           <View style={styles.metaItem}>
-            <Ionicons name="calendar" size={14} color="#007AFF" />
-            <Text style={styles.metaText}>{document.createdAt}</Text>
+            <Ionicons name="calendar" size={14} color={theme.primary} />
+            <Text style={[styles.metaText, { color: theme.textTertiary }]}>{document.createdAt}</Text>
           </View>
         </View>
 
         <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Budget:</Text>
-          <Text style={styles.budgetValue}>${document.budget}</Text>
+          <Text style={[styles.budgetLabel, { color: theme.textTertiary }]}>Budget:</Text>
+          <Text style={[styles.budgetValue, { color: theme.primary }]}>₱{document.compensation}</Text>
         </View>
       </View>
 
       <View style={styles.documentActions}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, { borderColor: theme.border }]}
           onPress={() => navigation.navigate('TaskDetails', { taskId: document.id })}
         >
-          <Ionicons name="eye" size={18} color="#007AFF" />
-          <Text style={styles.actionLabel}>View</Text>
+          <Ionicons name="eye" size={18} color={theme.primary} />
+          <Text style={[styles.actionLabel, { color: theme.primary }]}>View</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, { borderColor: theme.border }]}
           onPress={() => navigation.navigate('EditTask', { taskId: document.id })}
         >
           <Ionicons name="pencil" size={18} color="#FF9800" />
-          <Text style={styles.actionLabel}>Edit</Text>
+          <Text style={[styles.actionLabel, { color: '#FF9800' }]}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, { borderColor: theme.border }]}
           onPress={() => handleDeleteDocument(document.id)}
         >
-          <Ionicons name="trash" size={18} color="#f44336" />
-          <Text style={styles.actionLabel}>Delete</Text>
+          <Ionicons name="trash" size={18} color={theme.danger} />
+          <Text style={[styles.actionLabel, { color: theme.danger }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.filterContainer}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.filterContainer, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         {['all', 'active', 'completed'].map(filterOption => (
           <TouchableOpacity
             key={filterOption}
             style={[
               styles.filterButton,
-              filter === filterOption && styles.filterButtonActive,
+              filter === filterOption && [styles.filterButtonActive, { backgroundColor: theme.primary }],
+              filter !== filterOption && { borderColor: theme.border, backgroundColor: theme.surface },
             ]}
             onPress={() => setFilter(filterOption)}
           >
@@ -181,6 +185,7 @@ const MyDocumentsScreen = ({ navigation }) => {
               style={[
                 styles.filterButtonText,
                 filter === filterOption && styles.filterButtonTextActive,
+                filter !== filterOption && { color: theme.textTertiary },
               ]}
             >
               {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
@@ -191,7 +196,7 @@ const MyDocumentsScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         <FlatList

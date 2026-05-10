@@ -13,9 +13,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { taskService } from '../services/api';
+import { getTheme } from '../utils/theme';
 
 const PostScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [screen, setScreen] = useState('feed'); // 'feed', 'form', or 'success'
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -37,8 +40,11 @@ const PostScreen = ({ navigation }) => {
   const loadFeed = async () => {
     setFeedLoading(true);
     try {
-      // Fetch all posts without limit
-      const response = await taskService.getTasks({ status: 'posted' });
+      // Fetch all posts without limit, excluding user's own posts
+      const response = await taskService.getTasks({ 
+        status: 'posted',
+        excludeUserId: user?.id 
+      });
       const allPosts = response.data?.tasks || [];
       // Sort by newest first
       const sortedPosts = allPosts.sort((a, b) => 
@@ -241,13 +247,13 @@ const PostScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       {screen === 'feed' ? (
         <>
-          <View style={styles.feedHeader}>
-            <Text style={styles.feedTitle}>Discover Tasks</Text>
+          <View style={[styles.feedHeader, { backgroundColor: theme.surface }]}>
+            <Text style={[styles.feedTitle, { color: theme.text }]}>Discover Tasks</Text>
             <TouchableOpacity
-              style={styles.createButton}
+              style={[styles.createButton, { backgroundColor: theme.primary }]}
               onPress={() => setScreen('form')}
             >
               <Ionicons name="add-circle" size={20} color="#fff" />
@@ -256,7 +262,7 @@ const PostScreen = ({ navigation }) => {
           </View>
 
           {feedLoading ? (
-            <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
+            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
           ) : posts.length > 0 ? (
             <FlatList
               data={posts}
@@ -268,30 +274,32 @@ const PostScreen = ({ navigation }) => {
             />
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="document-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>No posts yet</Text>
-              <Text style={styles.emptySubtext}>Be the first to post a task!</Text>
+              <Ionicons name="document-outline" size={64} color={theme.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.text }]}>No posts yet</Text>
+              <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>Be the first to post a task!</Text>
             </View>
           )}
         </>
       ) : screen === 'form' ? (
         <>
-          <View style={styles.header}>
+          <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
             <TouchableOpacity onPress={handleBackToFeed}>
-              <Ionicons name="chevron-back" size={24} color="#007AFF" />
+              <Ionicons name="chevron-back" size={24} color={theme.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Create a Post</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Create a Post</Text>
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.form}>
+          <View style={[styles.form, { backgroundColor: theme.background }]}>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Post Type *</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Post Type *</Text>
               <View style={styles.postTypeContainer}>
                 <TouchableOpacity
                   style={[
                     styles.postTypeButton,
-                    postType === 'job_offer' && styles.postTypeButtonActive,
+                    postType === 'job_offer' && [styles.postTypeButtonActive, { backgroundColor: theme.primary }],
+                    postType !== 'job_offer' && { borderColor: theme.border, backgroundColor: theme.surface },
+
                   ]}
                   onPress={() => setPostType('job_offer')}
                   disabled={loading}

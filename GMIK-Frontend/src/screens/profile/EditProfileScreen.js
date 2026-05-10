@@ -12,9 +12,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { userService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const EditProfileScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
@@ -69,27 +72,35 @@ const EditProfileScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#007AFF" />
+          <Ionicons name="chevron-back" size={24} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Edit Profile</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.form}>
+      <View style={[styles.form, { backgroundColor: theme.background }]}>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Display Name</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Display Name</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholderTextColor={theme.textTertiary}
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="Enter your name"

@@ -8,9 +8,12 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { taskService } from '../services/api';
+import { getTheme } from '../utils/theme';
 
 const BrowseScreen = ({ navigation }) => {
   const [tasks, setTasks] = useState([]);
@@ -18,6 +21,10 @@ const BrowseScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const user = useSelector(state => state.auth.user);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
 
   const categories = ['All', 'Development', 'Design', 'Writing', 'Marketing', 'Other'];
 
@@ -32,7 +39,9 @@ const BrowseScreen = ({ navigation }) => {
       const params = {
         category: selectedCategory === 'All' ? undefined : selectedCategory,
         search: searchQuery || undefined,
+        excludeUserId: user?.id, // Exclude user's own posts
       };
+      console.log('Current user:', user);
       console.log('Fetching tasks with params:', params);
       const response = await taskService.getTasks(params);
       console.log('Tasks response:', response);
@@ -58,17 +67,17 @@ const BrowseScreen = ({ navigation }) => {
 
   const TaskCard = ({ task }) => (
     <TouchableOpacity
-      style={styles.taskCard}
+      style={[styles.taskCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
       onPress={() => navigation.navigate('TaskDetails', { taskId: task.id })}
     >
       <View style={styles.taskHeader}>
         <View style={styles.authorInfo}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
             <Text style={styles.avatarText}>{task.display_name ? task.display_name[0] : '?'}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.taskTitle}>{task.title}</Text>
-            <Text style={styles.authorName}>{task.display_name || 'Unknown'}</Text>
+            <Text style={[styles.taskTitle, { color: theme.text }]}>{task.title}</Text>
+            <Text style={[styles.authorName, { color: theme.textTertiary }]}>{task.display_name || 'Unknown'}</Text>
           </View>
         </View>
         <View style={styles.tagsContainer}>
@@ -81,27 +90,27 @@ const BrowseScreen = ({ navigation }) => {
       </View>
       {task.compensation && (
         <View style={styles.budgetContainer}>
-          <Ionicons name="cash" size={16} color="#007AFF" />
-          <Text style={styles.budgetText}>₱{task.compensation}</Text>
+          <Ionicons name="cash" size={16} color={theme.primary} />
+          <Text style={[styles.budgetText, { color: theme.primary }]}>₱{task.compensation}</Text>
         </View>
       )}
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.searchContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Ionicons name="search" size={20} color={theme.textTertiary} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.text }]}
           placeholder="Search tasks..."
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      <View style={styles.categoryScroll}>
+      <View style={[styles.categoryScroll, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <FlatList
           data={categories}
           horizontal
@@ -111,14 +120,17 @@ const BrowseScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.categoryFilter,
-                selectedCategory === item && styles.categoryFilterActive,
+                {
+                  backgroundColor: selectedCategory === item ? theme.primary : theme.surface,
+                  borderColor: selectedCategory === item ? theme.primary : theme.border,
+                },
               ]}
               onPress={() => setSelectedCategory(item)}
             >
               <Text
                 style={[
                   styles.categoryFilterText,
-                  selectedCategory === item && styles.categoryFilterTextActive,
+                  { color: selectedCategory === item ? '#fff' : theme.textTertiary },
                 ]}
               >
                 {item}
@@ -131,7 +143,7 @@ const BrowseScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         <FlatList
@@ -141,8 +153,8 @@ const BrowseScreen = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="search" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No tasks found</Text>
+              <Ionicons name="search" size={48} color={theme.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.textTertiary }]}>No tasks found</Text>
             </View>
           }
           contentContainerStyle={styles.tasksList}
@@ -155,18 +167,15 @@ const BrowseScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     marginHorizontal: 12,
     marginVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
   },
   searchIcon: {
     marginRight: 8,
@@ -175,13 +184,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#333',
   },
   categoryScroll: {
     height: 45,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   categoryContent: {
     paddingHorizontal: 12,
@@ -193,32 +199,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-  },
-  categoryFilterActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
   },
   categoryFilterText: {
     fontSize: 12,
-    color: '#666',
     fontWeight: '500',
-  },
-  categoryFilterTextActive: {
-    color: '#fff',
   },
   tasksList: {
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   taskCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#eee',
   },
   taskHeader: {
     flexDirection: 'row',
@@ -235,7 +229,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -248,12 +241,10 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
   authorName: {
     fontSize: 12,
-    color: '#999',
   },
   tagsContainer: {
     flexDirection: 'column',
@@ -291,7 +282,6 @@ const styles = StyleSheet.create({
   budgetText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#007AFF',
     marginLeft: 6,
   },
   centerContainer: {
@@ -307,7 +297,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
     marginTop: 12,
   },
 });

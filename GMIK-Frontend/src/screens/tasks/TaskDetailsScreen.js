@@ -11,8 +11,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { taskService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const TaskDetailsScreen = ({ route, navigation }) => {
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const { taskId } = route.params;
   const { user } = useSelector(state => state.auth);
   const [task, setTask] = useState(null);

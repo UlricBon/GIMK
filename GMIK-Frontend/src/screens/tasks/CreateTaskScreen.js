@@ -8,9 +8,13 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import { taskService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const CreateTaskScreen = ({ navigation }) => {
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');

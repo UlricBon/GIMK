@@ -11,9 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
 import { taskService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const EditTaskScreen = ({ route, navigation }) => {
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const { taskId } = route.params;
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);

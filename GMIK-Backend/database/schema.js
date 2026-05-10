@@ -144,8 +144,13 @@ export const initializeTables = () => {
         user_id TEXT NOT NULL UNIQUE,
         notifications_enabled INTEGER DEFAULT 1,
         email_updates_enabled INTEGER DEFAULT 1,
+        task_alerts_enabled INTEGER DEFAULT 1,
+        message_alerts_enabled INTEGER DEFAULT 1,
         dark_mode INTEGER DEFAULT 0,
         location_services INTEGER DEFAULT 1,
+        profile_privacy TEXT DEFAULT 'public',
+        show_online_status INTEGER DEFAULT 1,
+        allow_messages INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

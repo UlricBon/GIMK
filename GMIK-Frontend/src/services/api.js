@@ -101,8 +101,8 @@ export const paymentService = {
     apiClient.get('/payments/history'),
   getPaymentMethods: () =>
     apiClient.get('/payments/methods'),
-  addPaymentMethod: (card_holder_name, card_number, expiry_date) =>
-    apiClient.post('/payments/methods', { card_holder_name, card_number, expiry_date }),
+  addPaymentMethod: (paymentData) =>
+    apiClient.post('/payments/methods', paymentData),
   setDefaultPaymentMethod: (method_id) =>
     apiClient.post(`/payments/methods/${method_id}/default`),
   removePaymentMethod: (method_id) =>
@@ -111,9 +111,9 @@ export const paymentService = {
 
 export const settingsService = {
   getSettings: () =>
-    apiClient.get('/users/settings'),
+    apiClient.get('/settings'),
   updateSettings: (settings) =>
-    apiClient.put('/users/settings', settings),
+    apiClient.put('/settings', settings),
 };
 
 export const supportService = {

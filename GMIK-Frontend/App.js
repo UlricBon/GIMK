@@ -4,6 +4,7 @@ import { Provider, useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from './src/redux/store';
+import { setSettings } from './src/redux/settingsSlice';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import TaskDetailsScreen from './src/screens/tasks/TaskDetailsScreen';
@@ -57,9 +58,30 @@ const WebAppContent = () => {
   const [initialized, setInitialized] = useState(false);
   const { isLoggedIn } = useSelector(state => state.auth);
 
+  const dispatch = useDispatch();
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Load persisted settings from AsyncStorage
+        const savedSettings = await AsyncStorage.getItem('userSettings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          console.log('Loaded persisted settings from AsyncStorage:', settings);
+          
+          const reduxPayload = {
+            darkMode: settings.dark_mode ?? false,
+            notifications_enabled: settings.notifications_enabled ?? true,
+            email_updates_enabled: settings.email_updates_enabled ?? true,
+            task_alerts_enabled: settings.task_alerts_enabled ?? true,
+            message_alerts_enabled: settings.message_alerts_enabled ?? true,
+            location_services: settings.location_services ?? true,
+            profile_privacy: settings.profile_privacy ?? 'public',
+            show_online_status: settings.show_online_status ?? true,
+            allow_messages: settings.allow_messages ?? true,
+          };
+          dispatch(setSettings(reduxPayload));
+        }
         setCurrentScreen('Login');
         setProfileScreen(null);
       } catch (error) {
@@ -69,7 +91,7 @@ const WebAppContent = () => {
       }
     };
     initializeApp();
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     console.log('isLoggedIn state changed:', isLoggedIn);

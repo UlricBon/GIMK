@@ -11,9 +11,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
 import { supportService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const HelpSupportScreen = ({ navigation }) => {
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [activeTab, setActiveTab] = useState('faq');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -50,23 +54,23 @@ const HelpSupportScreen = ({ navigation }) => {
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   const FaqItem = ({ item }) => (
-    <View style={styles.faqItem}>
+    <View style={[styles.faqItem, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       <TouchableOpacity
         style={styles.faqQuestion}
         onPress={() =>
           setExpandedFaq(expandedFaq === item.id ? null : item.id)
         }
       >
-        <Text style={styles.faqQuestionText}>{item.question}</Text>
+        <Text style={[styles.faqQuestionText, { color: theme.text }]}>{item.question}</Text>
         <Ionicons
           name={expandedFaq === item.id ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color="#007AFF"
+          color={theme.primary}
         />
       </TouchableOpacity>
       {expandedFaq === item.id && (
-        <View style={styles.faqAnswer}>
-          <Text style={styles.faqAnswerText}>{item.answer}</Text>
+        <View style={[styles.faqAnswer, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+          <Text style={[styles.faqAnswerText, { color: theme.textTertiary }]}>{item.answer}</Text>
         </View>
       )}
     </View>
@@ -97,34 +101,47 @@ const HelpSupportScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#007AFF" />
+          <Ionicons name="chevron-back" size={24} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & Support</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Help & Support</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'faq' && styles.activeTab]}
+          style={[
+            styles.tab,
+            activeTab === 'faq' && [styles.activeTab, { borderBottomColor: theme.primary }],
+            activeTab !== 'faq' && { borderBottomColor: theme.border },
+          ]}
           onPress={() => setActiveTab('faq')}
         >
           <Text
-            style={[styles.tabText, activeTab === 'faq' && styles.activeTabText]}
+            style={[
+              styles.tabText,
+              activeTab === 'faq' && [styles.activeTabText, { color: theme.primary }],
+              activeTab !== 'faq' && { color: theme.textTertiary },
+            ]}
           >
             FAQ
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'contact' && styles.activeTab]}
+          style={[
+            styles.tab,
+            activeTab === 'contact' && [styles.activeTab, { borderBottomColor: theme.primary }],
+            activeTab !== 'contact' && { borderBottomColor: theme.border },
+          ]}
           onPress={() => setActiveTab('contact')}
         >
           <Text
             style={[
               styles.tabText,
-              activeTab === 'contact' && styles.activeTabText,
+              activeTab === 'contact' && [styles.activeTabText, { color: theme.primary }],
+              activeTab !== 'contact' && { color: theme.textTertiary },
             ]}
           >
             Contact Us
@@ -133,7 +150,7 @@ const HelpSupportScreen = ({ navigation }) => {
       </View>
 
       {activeTab === 'faq' ? (
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.background }]}>
           <FlatList
             data={faqs}
             renderItem={({ item }) => <FaqItem item={item} />}
@@ -142,8 +159,8 @@ const HelpSupportScreen = ({ navigation }) => {
           />
         </View>
       ) : (
-        <View style={styles.content}>
-          <Text style={styles.contactTitle}>Get in Touch</Text>
+        <View style={[styles.content, { backgroundColor: theme.background }]}>
+          <Text style={[styles.contactTitle, { color: theme.text }]}>Get in Touch</Text>
           <Text style={styles.contactSubtitle}>
             Have a question or issue? Send us a message and we'll help you out.
           </Text>

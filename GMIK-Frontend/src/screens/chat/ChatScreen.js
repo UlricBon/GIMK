@@ -13,9 +13,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { messageService, taskService, userService } from '../../services/api';
+import { getTheme } from '../../utils/theme';
 
 const ChatScreen = ({ route, navigation }) => {
   const { user } = useSelector(state => state.auth);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState([]);
@@ -452,41 +455,55 @@ const ChatScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tabContainer}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'messages' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'messages' && { borderBottomColor: theme.primary },
+          ]}
           onPress={() => setActiveTab('messages')}
         >
-          <Ionicons name="chatbubbles" size={20} color={activeTab === 'messages' ? '#007AFF' : '#999'} />
-          <Text style={[styles.tabLabel, activeTab === 'messages' && styles.tabLabelActive]}>Messages</Text>
+          <Ionicons name="chatbubbles" size={20} color={activeTab === 'messages' ? theme.primary : theme.textTertiary} />
+          <Text style={[
+            styles.tabLabel,
+            activeTab === 'messages' && { color: theme.primary },
+            activeTab !== 'messages' && { color: theme.textTertiary },
+          ]}>Messages</Text>
           {unreadCount > 0 && (
-            <View style={styles.tabBadge}>
+            <View style={[styles.tabBadge, { backgroundColor: theme.primary }]}>
               <Text style={styles.tabBadgeText}>{Math.min(unreadCount, 9)}</Text>
             </View>
           )}
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'friends' && { borderBottomColor: theme.primary },
+          ]}
           onPress={() => setActiveTab('friends')}
         >
-          <Ionicons name="people" size={20} color={activeTab === 'friends' ? '#007AFF' : '#999'} />
-          <Text style={[styles.tabLabel, activeTab === 'friends' && styles.tabLabelActive]}>Friends</Text>
+          <Ionicons name="people" size={20} color={activeTab === 'friends' ? theme.primary : theme.textTertiary} />
+          <Text style={[
+            styles.tabLabel,
+            activeTab === 'friends' && { color: theme.primary },
+            activeTab !== 'friends' && { color: theme.textTertiary },
+          ]}>Friends</Text>
         </TouchableOpacity>
       </View>
 
       {activeTab === 'messages' ? (
         <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Active Conversations</Text>
+          <View style={[styles.sectionHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Conversations</Text>
           </View>
           <FlatList
             data={chats}
@@ -496,9 +513,9 @@ const ChatScreen = ({ route, navigation }) => {
             refreshing={loading}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>No conversations yet</Text>
-                <Text style={styles.emptySubtext}>
+                <Ionicons name="chatbubbles-outline" size={48} color={theme.textTertiary} />
+                <Text style={[styles.emptyText, { color: theme.text }]}>No conversations yet</Text>
+                <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
                   Accept or post tasks to start chatting
                 </Text>
               </View>
@@ -512,9 +529,9 @@ const ChatScreen = ({ route, navigation }) => {
           keyExtractor={item => item.id}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No friends yet</Text>
-              <Text style={styles.emptySubtext}>
+              <Ionicons name="people-outline" size={48} color={theme.textTertiary} />
+              <Text style={[styles.emptyText, { color: theme.text }]}>No friends yet</Text>
+              <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
                 Browse and interact with users to build your friends list
               </Text>
             </View>
