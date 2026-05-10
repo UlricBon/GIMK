@@ -279,24 +279,3 @@ const styles = StyleSheet.create({
 });
 
 export default SettingsScreen;
-    color: '#333',
-    marginLeft: 12,
-  },
-  dangerButton: {
-    backgroundColor: '#f44336',
-    flexDirection: 'row',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 16,
-  },
-  dangerButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-});
-
-export default SettingsScreen;

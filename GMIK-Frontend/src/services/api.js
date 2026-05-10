@@ -1,7 +1,19 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://localhost:5000/api';
+// Dynamically get API URL based on host
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If accessing from phone (not localhost), use same host with port 5000
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `http://${hostname}:5000/api`;
+    }
+  }
+  return 'http://localhost:5000/api';
+};
+
+const API_URL = getApiUrl();
 
 const apiClient = axios.create({
   baseURL: API_URL,

@@ -40,14 +40,21 @@ const io = new SocketIOServer(httpServer, {
   cors: {
     origin: [
       process.env.ANDROID_APP_URL || 'http://localhost:8081',
-      process.env.ADMIN_DASHBOARD_URL || 'http://localhost:3000'
+      process.env.ADMIN_DASHBOARD_URL || 'http://localhost:3000',
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/ // Allow all local IPs
     ],
     methods: ['GET', 'POST']
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow all origins for development
+    callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
