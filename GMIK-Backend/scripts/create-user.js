@@ -7,16 +7,14 @@
 
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { initializeDatabase, getDatabase, saveDatabase } from '../config/database.js';
+import { initializeDatabase, saveDatabase } from '../config/database.js';
+import initializeTables from '../database/schema.js';
+import { query } from '../database/db.js';
 
 async function createUser() {
   try {
     await initializeDatabase();
-    
-    const db = getDatabase();
-    if (!db) {
-      throw new Error('Database not initialized');
-    }
+    initializeTables();
     
     const userId = uuidv4();
     const userEmail = 'user@gmik.com';
@@ -26,18 +24,17 @@ async function createUser() {
     const hashedPassword = await bcrypt.hash(userPassword, 10);
     const now = new Date().toISOString();
     
-    // Use exec for DDL/DML operations in sql.js
-    db.exec(`
-      INSERT OR IGNORE INTO users (id, email, password_hash, display_name, email_verified, is_active, completed_tasks_count, created_at, updated_at)
-      VALUES ('${userId}', '${userEmail}', '${hashedPassword}', '${userName}', 1, 1, 0, '${now}', '${now}')
-    `);
+    query(
+      `INSERT INTO users (id, email, password_hash, display_name, email_verified, is_active, completed_tasks_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 1, 1, 0, ?, ?)`,
+      [userId, userEmail, hashedPassword, userName, now, now]
+    );
     
     saveDatabase();
     
-    // Verify insertion
-    const result = db.exec(`SELECT * FROM users WHERE email = '${userEmail}'`);
+    const result = query('SELECT * FROM users WHERE email = ?', [userEmail]);
     
-    if (result.length > 0 && result[0].values.length > 0) {
+    if (result.rows.length > 0) {
       console.log('✓ Regular user account created successfully!');
       console.log(`\nLogin credentials:`);
       console.log(`  Email: ${userEmail}`);

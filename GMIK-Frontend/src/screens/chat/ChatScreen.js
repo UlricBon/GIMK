@@ -7,101 +7,295 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
+  Alert,
+  Badge,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { messageService } from '../../services/api';
+import { useSelector } from 'react-redux';
+import { messageService, taskService, userService } from '../../services/api';
 
 const ChatScreen = ({ route, navigation }) => {
-  const [activeTab, setActiveTab] = useState('chats'); // 'chats' or 'friends'
+  const { user } = useSelector(state => state.auth);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState([]);
+  const [friends, setFriends] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [activeTab, setActiveTab] = useState('messages'); // 'messages' or 'friends'
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [newPostsCount, setNewPostsCount] = useState(0);
 
-  const [chats, setChats] = useState([
-    {
-      id: '1',
-      name: 'John Doe',
-      avatar: 'https://via.placeholder.com/50',
-      lastMessage: 'Great! When can you start?',
-      timestamp: new Date(Date.now() - 300000),
-      unread: 0,
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      avatar: 'https://via.placeholder.com/50',
-      lastMessage: 'Thanks for the update!',
-      timestamp: new Date(Date.now() - 3600000),
-      unread: 2,
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      avatar: 'https://via.placeholder.com/50',
-      lastMessage: 'Perfect, see you tomorrow',
-      timestamp: new Date(Date.now() - 86400000),
-      unread: 0,
-    },
-  ]);
-
-  const [friends, setFriends] = useState([
-    {
-      id: '4',
-      name: 'Sarah Wilson',
-      avatar: 'https://via.placeholder.com/50',
-      status: 'online',
-    },
-    {
-      id: '5',
-      name: 'Tom Brown',
-      avatar: 'https://via.placeholder.com/50',
-      status: 'offline',
-    },
-    {
-      id: '6',
-      name: 'Lisa Anderson',
-      avatar: 'https://via.placeholder.com/50',
-      status: 'online',
-    },
-  ]);
-
-  const [messages, setMessages] = useState([
-    {
-      id: '1',
-      display_name: 'John Doe',
-      content: 'Hey, are you interested in this task?',
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      isOwn: false,
-    },
-    {
-      id: '2',
-      display_name: 'You',
-      content: 'Yes, I can help with that!',
-      created_at: new Date(Date.now() - 1800000).toISOString(),
-      isOwn: true,
-    },
-    {
-      id: '3',
-      display_name: 'John Doe',
-      content: 'Great! When can you start?',
-      created_at: new Date().toISOString(),
-      isOwn: false,
-    },
-  ]);
-
+  // Check if opening direct message from route params
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    const directUserId = route?.params?.directMessageUserId;
+    if (directUserId) {
+      const userName = route.params?.directMessageUserName || 'User';
+      const postTitle = route.params?.postTitle || 'Direct Message';
+      
+      setSelectedChat({
+        id: `direct_${directUserId}`,
+        name: userName,
+        taskTitle: postTitle,
+        isDirectMessage: true,
+        otherUserId: directUserId,
+      });
+      
+      loadDirectMessages(directUserId);
+      setActiveTab('messages');
+    } else {
+      setActiveTab('messages');
+      loadChats();
+      loadFriends();
+    }
+  }, [route?.params?.directMessageUserId]);
+
+  // Auto-reload messages when chat is selected
+  useEffect(() => {
+    if (selectedChat) {
+      if (selectedChat.isDirectMessage) {
+        loadDirectMessages(selectedChat.otherUserId);
+      } else {
+        loadMessages(selectedChat.id);
+      }
+    }
+  }, [selectedChat?.id]);
+
+  const loadChats = async () => {
+    try {
+      setLoading(true);
+      const chatList = [];
+      const processedChats = new Set();
+
+      // 1. Load task-based messages
+      const tasksResponse = await taskService.getUserTasks();
+      const userTasks = tasksResponse.data?.tasks || [];
+      
+      for (const task of userTasks) {
+        try {
+          const messagesResponse = await messageService.getMessages(task.id);
+          const taskMessages = messagesResponse.data?.messages || [];
+
+          if (taskMessages.length > 0) {
+            let otherUserId = null;
+            let otherUserName = 'User';
+
+            if (task.dropper_id === user?.id) {
+              otherUserId = task.acceptor_id;
+              otherUserName = task.acceptor_name || 'Applicant';
+            } else {
+              otherUserId = task.dropper_id;
+              otherUserName = task.display_name || 'Employer';
+            }
+
+            const chatKey = `task-${task.id}`;
+            if (!processedChats.has(chatKey)) {
+              processedChats.add(chatKey);
+
+              const lastMessage = taskMessages[taskMessages.length - 1];
+              chatList.push({
+                id: task.id,
+                name: otherUserName,
+                taskTitle: task.title,
+                lastMessage: lastMessage?.content || 'No messages yet',
+                timestamp: lastMessage?.created_at ? new Date(lastMessage.created_at) : new Date(),
+                unread: 0,
+                otherUserId,
+                isDirectMessage: false,
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error loading messages for task ${task.id}:`, error);
+        }
+      }
+
+      // 2. Load direct messages from all friends
+      try {
+        const friendsResponse = await taskService.getTasks({ status: 'posted' });
+        const allTasks = friendsResponse.data?.tasks || [];
+        
+        // Get unique user IDs
+        const friendIds = new Set();
+        for (const task of allTasks) {
+          if (task.dropper_id !== user?.id) {
+            friendIds.add(task.dropper_id);
+          }
+        }
+
+        // Load direct messages for each friend
+        for (const friendId of friendIds) {
+          // Skip if this is the current user (safety check)
+          if (friendId === user?.id) {
+            console.log('Skipping self-message for user:', friendId);
+            continue;
+          }
+
+          try {
+            const directMessagesResponse = await messageService.getDirectMessages(friendId);
+            const directMessages = directMessagesResponse.data?.messages || [];
+
+            if (directMessages.length > 0) {
+              const chatKey = `direct-${friendId}`;
+              if (!processedChats.has(chatKey)) {
+                processedChats.add(chatKey);
+
+                // Find the OTHER user's name (not the current user)
+                let friendName = 'User';
+                for (const msg of directMessages) {
+                  if (msg.sender_id !== user?.id) {
+                    friendName = msg.display_name || 'User';
+                    break;
+                  }
+                }
+
+                const lastMessage = directMessages[directMessages.length - 1];
+                
+                chatList.push({
+                  id: `direct_${friendId}`,
+                  name: friendName,
+                  taskTitle: 'Direct Message',
+                  lastMessage: lastMessage?.content || 'No messages yet',
+                  timestamp: lastMessage?.created_at ? new Date(lastMessage.created_at) : new Date(),
+                  unread: 0,
+                  otherUserId: friendId,
+                  isDirectMessage: true,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error loading direct messages for user ${friendId}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading direct messages:', error);
+      }
+
+      // Sort by timestamp
+      chatList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setChats(chatList);
+      
+      const unread = chatList.length > 0 ? chatList.length : 0;
+      setUnreadCount(unread);
+    } catch (error) {
+      console.error('Error loading chats:', error);
+      Alert.alert('Error', 'Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFriends = async () => {
+    try {
+      // Get all users to display as friends
+      const response = await taskService.getTasks({ status: 'posted' });
+      const allTasks = response.data?.tasks || [];
+      
+      // Extract unique users from tasks
+      const friendsSet = new Map();
+      
+      for (const task of allTasks) {
+        const userId = task.dropper_id;
+        const userName = task.display_name || 'User';
+        
+        if (userId !== user?.id && !friendsSet.has(userId)) {
+          friendsSet.set(userId, {
+            id: userId,
+            name: userName,
+            email: task.email || 'user@gmik.com',
+          });
+        }
+      }
+      
+      setFriends(Array.from(friendsSet.values()));
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    }
+  };
+
+  const loadMessages = async (taskId) => {
+    try {
+      const response = await messageService.getMessages(taskId);
+      const taskMessages = response.data?.messages || [];
+      setMessages(taskMessages);
+      console.log(`Loaded ${taskMessages.length} task messages for task ${taskId}`);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      Alert.alert('Error', 'Failed to load messages');
+    }
+  };
+
+  const loadDirectMessages = async (directUserId) => {
+    try {
+      const response = await messageService.getDirectMessages(directUserId);
+      const directMessages = response.data?.messages || [];
+      setMessages(directMessages);
+      console.log(`Loaded ${directMessages.length} direct messages`);
+    } catch (error) {
+      console.error('Error loading direct messages:', error);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedChat) return;
+
+    // Prevent sending messages to yourself
+    if (selectedChat.isDirectMessage && selectedChat.otherUserId === user?.id) {
+      Alert.alert('Error', 'You cannot message yourself');
+      return;
+    }
+
+    try {
+      setSendingMessage(true);
+      const messageContent = messageInput.trim();
+      
+      if (selectedChat.isDirectMessage) {
+        // Send direct message
+        console.log('Sending direct message to:', selectedChat.otherUserId);
+        await messageService.sendDirectMessage(selectedChat.otherUserId, messageContent);
+        setMessageInput('');
+        
+        // Reload direct messages
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure message is saved
+        await loadDirectMessages(selectedChat.otherUserId);
+      } else {
+        // Send task-based message
+        console.log('Sending task message to task:', selectedChat.id);
+        await messageService.sendMessage(selectedChat.id, messageContent);
+        setMessageInput('');
+        
+        // Reload messages to show the sent message
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay to ensure message is saved
+        await loadMessages(selectedChat.id);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   const ChatListItem = ({ chat }) => (
-    <TouchableOpacity style={styles.chatItem} onPress={() => setSelectedChat(chat)}>
+    <TouchableOpacity 
+      style={styles.chatItem} 
+      onPress={() => {
+        setSelectedChat(chat);
+        if (chat.isDirectMessage) {
+          loadDirectMessages(chat.otherUserId);
+        } else {
+          loadMessages(chat.id);
+        }
+      }}
+    >
       <View style={styles.avatarContainer}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{chat.name[0]}</Text>
         </View>
-        {chat.unread > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{chat.unread}</Text>
+        {unreadCount > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.notificationText}>{Math.min(unreadCount, 99)}</Text>
           </View>
         )}
       </View>
@@ -117,6 +311,9 @@ const ChatScreen = ({ route, navigation }) => {
             })}
           </Text>
         </View>
+        <Text style={styles.taskTitle} numberOfLines={1}>
+          {chat.isDirectMessage ? 'Direct Message' : `Task: ${chat.taskTitle}`}
+        </Text>
         <Text style={styles.lastMessage} numberOfLines={1}>
           {chat.lastMessage}
         </Text>
@@ -124,80 +321,129 @@ const ChatScreen = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  const FriendItem = ({ friend }) => (
-    <TouchableOpacity style={styles.friendItem} onPress={() => setSelectedChat(friend)}>
-      <View style={styles.friendAvatarContainer}>
+  const FriendItem = ({ friend }) => {
+    // Prevent chatting with yourself
+    if (friend.id === user?.id) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity 
+        style={styles.friendItem}
+        onPress={() => {
+          // Double check to prevent self-messaging
+          if (friend.id === user?.id) {
+            Alert.alert('Error', 'You cannot message yourself');
+            return;
+          }
+
+          setSelectedChat({
+            id: `direct_${friend.id}`,
+            name: friend.name,
+            taskTitle: 'Direct Message',
+            isDirectMessage: true,
+            otherUserId: friend.id,
+          });
+          loadDirectMessages(friend.id);
+        }}
+      >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{friend.name[0]}</Text>
         </View>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: friend.status === 'online' ? '#4CAF50' : '#999' },
-          ]}
-        />
-      </View>
-      <View style={styles.friendInfo}>
-        <Text style={styles.friendName}>{friend.name}</Text>
-        <Text style={styles.friendStatus}>
-          {friend.status === 'online' ? 'Online' : 'Offline'}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.messageButton}>
-        <Ionicons name="send" size={20} color="#007AFF" />
+        <View style={styles.friendInfo}>
+          <Text style={styles.friendName}>{friend.name}</Text>
+          <Text style={styles.friendEmail} numberOfLines={1}>{friend.email}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#ccc" />
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (selectedChat) {
+    const refreshMessages = () => {
+      if (selectedChat.isDirectMessage) {
+        loadDirectMessages(selectedChat.otherUserId);
+      } else {
+        loadMessages(selectedChat.id);
+      }
+    };
+
     return (
       <View style={styles.container}>
-        <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => setSelectedChat(null)}>
+        <View style={styles.selectedChatHeader}>
+          <TouchableOpacity onPress={() => {
+            setSelectedChat(null);
+            setMessages([]);
+          }}>
             <Ionicons name="chevron-back" size={24} color="#007AFF" />
           </TouchableOpacity>
-          <Text style={styles.selectedChatName}>{selectedChat.name}</Text>
+          <View style={styles.selectedChatTitle}>
+            <Text style={styles.selectedChatName}>{selectedChat.name}</Text>
+            <Text style={styles.selectedChatTask} numberOfLines={1}>
+              {selectedChat.isDirectMessage ? 'Direct Message' : `Task: ${selectedChat.taskTitle}`}
+            </Text>
+          </View>
           <View style={{ width: 24 }} />
         </View>
+
         <FlatList
           data={messages}
-          renderItem={({ item }) => (
-            <View
-              style={[
-                styles.messageItem,
-                item.isOwn ? styles.ownMessage : styles.otherMessage,
-              ]}
-            >
-              {!item.isOwn && <Text style={styles.senderName}>{item.display_name}</Text>}
+          renderItem={({ item }) => {
+            const isOwnMessage = item.sender_id === user?.id;
+            return (
               <View
                 style={[
-                  styles.messageBubble,
-                  item.isOwn ? styles.ownBubble : styles.otherBubble,
+                  styles.messageItem,
+                  isOwnMessage ? styles.ownMessage : styles.otherMessage,
                 ]}
               >
-                <Text style={[styles.messageContent, item.isOwn ? styles.ownText : {}]}>
-                  {item.content}
+                {!isOwnMessage && <Text style={styles.senderName}>{selectedChat.name}</Text>}
+                <View
+                  style={[
+                    styles.messageBubble,
+                    isOwnMessage ? styles.ownBubble : styles.otherBubble,
+                  ]}
+                >
+                  <Text style={[styles.messageContent, isOwnMessage ? styles.ownText : {}]}>
+                    {item.content}
+                  </Text>
+                </View>
+                <Text style={styles.messageTime}>
+                  {new Date(item.created_at).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </Text>
               </View>
-              <Text style={styles.messageTime}>
-                {new Date(item.created_at).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
-            </View>
-          )}
-          keyExtractor={item => item.id}
+            );
+          }}
+          keyExtractor={(item, index) => item.id || `msg-${index}`}
           contentContainerStyle={styles.messagesContainer}
+          inverted={false}
+          extraData={messages}
+          onRefresh={refreshMessages}
+          refreshing={loading}
         />
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
             placeholder="Type a message..."
             placeholderTextColor="#999"
+            value={messageInput}
+            onChangeText={setMessageInput}
+            editable={!sendingMessage}
           />
-          <TouchableOpacity style={styles.sendButton}>
-            <Ionicons name="send" size={20} color="#fff" />
+          <TouchableOpacity 
+            style={styles.sendButton}
+            onPress={handleSendMessage}
+            disabled={sendingMessage || !messageInput.trim()}
+          >
+            {sendingMessage ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="send" size={20} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -215,36 +461,50 @@ const ChatScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'chats' && styles.activeTab]}
-          onPress={() => setActiveTab('chats')}
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'messages' && styles.tabActive]}
+          onPress={() => setActiveTab('messages')}
         >
-          <Text style={[styles.tabText, activeTab === 'chats' && styles.activeTabText]}>
-            Chats
-          </Text>
+          <Ionicons name="chatbubbles" size={20} color={activeTab === 'messages' ? '#007AFF' : '#999'} />
+          <Text style={[styles.tabLabel, activeTab === 'messages' && styles.tabLabelActive]}>Messages</Text>
+          {unreadCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{Math.min(unreadCount, 9)}</Text>
+            </View>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
+        
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
           onPress={() => setActiveTab('friends')}
         >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Friends
-          </Text>
+          <Ionicons name="people" size={20} color={activeTab === 'friends' ? '#007AFF' : '#999'} />
+          <Text style={[styles.tabLabel, activeTab === 'friends' && styles.tabLabelActive]}>Friends</Text>
         </TouchableOpacity>
       </View>
 
-      {activeTab === 'chats' ? (
-        <FlatList
-          data={chats}
-          renderItem={({ item }) => <ChatListItem chat={item} />}
-          keyExtractor={item => item.id}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyText}>No conversations yet</Text>
-            </View>
-          }
-        />
+      {activeTab === 'messages' ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Active Conversations</Text>
+          </View>
+          <FlatList
+            data={chats}
+            renderItem={({ item }) => <ChatListItem chat={item} />}
+            keyExtractor={item => item.id}
+            onRefresh={loadChats}
+            refreshing={loading}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubbles-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No conversations yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Accept or post tasks to start chatting
+                </Text>
+              </View>
+            }
+          />
+        </>
       ) : (
         <FlatList
           data={friends}
@@ -254,6 +514,9 @@ const ChatScreen = ({ route, navigation }) => {
             <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={48} color="#ccc" />
               <Text style={styles.emptyText}>No friends yet</Text>
+              <Text style={styles.emptySubtext}>
+                Browse and interact with users to build your friends list
+              </Text>
             </View>
           }
         />
@@ -265,75 +528,58 @@ const ChatScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    display: 'flex',
-    flexDirection: 'column',
+    backgroundColor: '#fff',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#eee',
+    backgroundColor: '#fafafa',
   },
-  tab: {
-    flex: 1,
+  sectionHeader: {
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fafafa',
   },
-  activeTab: {
-    borderBottomColor: '#007AFF',
-  },
-  tabText: {
+  sectionTitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  activeTabText: {
-    color: '#007AFF',
     fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tabTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
   },
   chatItem: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    alignItems: 'center',
+    borderBottomColor: '#f0f0f0',
   },
   avatarContainer: {
-    position: 'relative',
     marginRight: 12,
+    position: 'relative',
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#007AFF',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
     color: '#fff',
-    fontSize: 18,
     fontWeight: 'bold',
-  },
-  badge: {
-    position: 'absolute',
-    right: -5,
-    bottom: -5,
-    backgroundColor: '#f44336',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 20,
   },
   chatInfo: {
     flex: 1,
@@ -345,69 +591,52 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   chatName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  taskTitle: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  lastMessage: {
+    fontSize: 13,
+    color: '#666',
   },
   timestamp: {
     fontSize: 12,
     color: '#999',
   },
-  lastMessage: {
-    fontSize: 12,
-    color: '#666',
-  },
-  friendItem: {
+  selectedChatHeader: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 12,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    alignItems: 'center',
   },
-  friendAvatarContainer: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  statusIndicator: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  friendInfo: {
+  selectedChatTitle: {
     flex: 1,
-  },
-  friendName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  friendStatus: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  messageButton: {
-    padding: 8,
+    marginHorizontal: 12,
   },
   selectedChatName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    flex: 1,
-    textAlign: 'center',
+  },
+  selectedChatTask: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginTop: 2,
   },
   messagesContainer: {
-    paddingVertical: 8,
+    padding: 12,
+    paddingBottom: 16,
   },
   messageItem: {
-    marginVertical: 4,
-    paddingHorizontal: 12,
+    marginBottom: 8,
+    flexDirection: 'column',
   },
   ownMessage: {
     alignItems: 'flex-end',
@@ -415,77 +644,162 @@ const styles = StyleSheet.create({
   otherMessage: {
     alignItems: 'flex-start',
   },
+  senderName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+    marginHorizontal: 8,
+    fontWeight: '500',
+  },
   messageBubble: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    maxWidth: '70%',
+    maxWidth: '80%',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    marginHorizontal: 8,
   },
   ownBubble: {
     backgroundColor: '#007AFF',
+    borderBottomRightRadius: 4,
   },
   otherBubble: {
-    backgroundColor: '#e0e0e0',
-  },
-  senderName: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 2,
-    fontWeight: '500',
+    backgroundColor: '#e5e5ea',
+    borderBottomLeftRadius: 4,
   },
   messageContent: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
+    lineHeight: 20,
   },
   ownText: {
     color: '#fff',
   },
   messageTime: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#999',
-    marginTop: 2,
+    marginTop: 4,
+    marginHorizontal: 8,
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginRight: 8,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     fontSize: 14,
+    marginRight: 8,
+    maxHeight: 100,
   },
   sendButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 6,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    justifyContent: 'center',
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
   emptyText: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#999',
     marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#ccc',
+    marginTop: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: '#f0f7ff',
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#999',
+  },
+  tabLabelActive: {
+    color: '#007AFF',
+  },
+  tabBadge: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  notificationText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  friendItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  friendInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  friendName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  friendEmail: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
 });
 

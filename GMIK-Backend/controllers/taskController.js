@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const createTask = async (req, res) => {
   try {
-    const { title, description, category, compensation, latitude, longitude, address, urgency } = req.body;
+    const { title, description, category, compensation, latitude, longitude, address, urgency, postType } = req.body;
     const dropperId = req.user.userId;
 
     if (!title || !category || !compensation || !latitude || !longitude) {
@@ -12,9 +12,9 @@ export const createTask = async (req, res) => {
 
     const taskId = uuidv4();
     await query(
-      `INSERT INTO tasks (id, dropper_id, title, description, category, compensation, location_latitude, location_longitude, location_address, urgency)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [taskId, dropperId, title, description, category, compensation, latitude, longitude, address, urgency]
+      `INSERT INTO tasks (id, dropper_id, title, description, category, compensation, location_latitude, location_longitude, location_address, urgency, post_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [taskId, dropperId, title, description, category, compensation, latitude, longitude, address, urgency, postType || 'job_offer']
     );
 
     // Fetch the newly created task

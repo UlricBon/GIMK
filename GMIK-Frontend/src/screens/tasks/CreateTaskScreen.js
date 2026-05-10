@@ -17,6 +17,7 @@ const CreateTaskScreen = ({ navigation }) => {
   const [compensation, setCompensation] = useState('');
   const [address, setAddress] = useState('');
   const [urgency, setUrgency] = useState('normal');
+  const [postType, setPostType] = useState('job_offer'); // 'job_offer' or 'job_seeker'
   const [loading, setLoading] = useState(false);
 
   const handleCreateTask = async () => {
@@ -34,15 +35,16 @@ const CreateTaskScreen = ({ navigation }) => {
         compensation: parseFloat(compensation),
         address,
         urgency,
+        postType, // Add post type
         latitude: 14.5995, // Default coordinates - replace with actual geolocation
         longitude: 120.9842,
       };
 
       await taskService.createTask(taskData);
-      Alert.alert('Success', 'Task created successfully!');
+      Alert.alert('Success', 'Post created successfully!');
       navigation.goBack();
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to create task';
+      const errorMessage = error.response?.data?.error || 'Failed to create post';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -54,6 +56,42 @@ const CreateTaskScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container}>
+      <Text style={styles.label}>Post Type *</Text>
+      <View style={styles.buttonGroup}>
+        <TouchableOpacity
+          style={[
+            styles.typeButton,
+            postType === 'job_offer' && styles.typeButtonActive,
+          ]}
+          onPress={() => setPostType('job_offer')}
+        >
+          <Text
+            style={[
+              styles.typeButtonText,
+              postType === 'job_offer' && styles.typeButtonTextActive,
+            ]}
+          >
+            Hiring (Looking for workers)
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.typeButton,
+            postType === 'job_seeker' && styles.typeButtonActive,
+          ]}
+          onPress={() => setPostType('job_seeker')}
+        >
+          <Text
+            style={[
+              styles.typeButtonText,
+              postType === 'job_seeker' && styles.typeButtonTextActive,
+            ]}
+          >
+            Job Seeker (Looking for work)
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.label}>Task Title *</Text>
       <TextInput
         style={styles.input}
@@ -180,6 +218,29 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginBottom: 16,
     gap: 8,
+  },
+  typeButton: {
+    flex: 1,
+    minWidth: '45%',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f9f9f9',
+  },
+  typeButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  typeButtonText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  typeButtonTextActive: {
+    color: '#fff',
   },
   categoryButton: {
     paddingHorizontal: 12,

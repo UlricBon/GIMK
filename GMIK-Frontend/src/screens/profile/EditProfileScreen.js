@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,73 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
+import { userService } from '../../services/api';
 
 const EditProfileScreen = ({ navigation }) => {
-  const [displayName, setDisplayName] = useState('Regular User');
-  const [email, setEmail] = useState('user@gmik.com');
-  const [bio, setBio] = useState('I am a skilled freelancer ready to help!');
-  const [location, setLocation] = useState('New York, USA');
+  const { user } = useSelector(state => state.auth);
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!');
-    navigation.goBack();
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await userService.getUserProfile();
+      const userData = response.data?.user;
+      
+      setDisplayName(userData?.display_name || '');
+      setEmail(userData?.email || '');
+      setBio(userData?.bio || '');
+      setLocation(userData?.location || '');
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      Alert.alert('Error', 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSave = async () => {
+    if (!displayName.trim()) {
+      Alert.alert('Error', 'Display name is required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await userService.updateProfile({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        location: location.trim(),
+      });
+      Alert.alert('Success', 'Profile updated successfully!');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -39,6 +93,7 @@ const EditProfileScreen = ({ navigation }) => {
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="Enter your name"
+            editable={!saving}
           />
         </View>
 
@@ -62,6 +117,7 @@ const EditProfileScreen = ({ navigation }) => {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
+            editable={!saving}
           />
         </View>
 
@@ -72,11 +128,20 @@ const EditProfileScreen = ({ navigation }) => {
             value={location}
             onChangeText={setLocation}
             placeholder="Your location"
+            editable={!saving}
           />
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -138,6 +203,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   saveButtonText: {
     color: '#fff',

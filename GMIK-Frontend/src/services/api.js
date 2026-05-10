@@ -76,6 +76,10 @@ export const messageService = {
     apiClient.get(`/messages/task/${taskId}`),
   sendMessage: (taskId, content) =>
     apiClient.post(`/messages/task/${taskId}`, { content }),
+  getDirectMessages: (userId) =>
+    apiClient.get(`/messages/direct/${userId}`),
+  sendDirectMessage: (userId, content) =>
+    apiClient.post(`/messages/direct/${userId}`, { content }),
 };
 
 export const paymentService = {
@@ -83,6 +87,28 @@ export const paymentService = {
     apiClient.post('/payments/confirm', { taskId, paymentMethod }),
   getPaymentHistory: () =>
     apiClient.get('/payments/history'),
+  getPaymentMethods: () =>
+    apiClient.get('/payments/methods'),
+  addPaymentMethod: (card_holder_name, card_number, expiry_date) =>
+    apiClient.post('/payments/methods', { card_holder_name, card_number, expiry_date }),
+  setDefaultPaymentMethod: (method_id) =>
+    apiClient.post(`/payments/methods/${method_id}/default`),
+  removePaymentMethod: (method_id) =>
+    apiClient.delete(`/payments/methods/${method_id}`),
+};
+
+export const settingsService = {
+  getSettings: () =>
+    apiClient.get('/users/settings'),
+  updateSettings: (settings) =>
+    apiClient.put('/users/settings', settings),
+};
+
+export const supportService = {
+  sendMessage: (subject, message) =>
+    apiClient.post('/support/ticket', { subject, message }),
+  getTickets: () =>
+    apiClient.get('/support/tickets'),
 };
 
 export default apiClient;

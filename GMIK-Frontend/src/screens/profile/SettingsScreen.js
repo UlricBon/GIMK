@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,66 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { settingsService } from '../../services/api';
 
 const SettingsScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const SettingItem = ({ icon, label, description, value, onChange }) => (
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await settingsService.getSettings();
+      const settings = response.data?.settings || {};
+      
+      setNotifications(settings.notifications_enabled ?? true);
+      setEmailUpdates(settings.email_updates_enabled ?? true);
+      setDarkMode(settings.dark_mode ?? false);
+      setLocationServices(settings.location_services ?? true);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      // Silently fail - use defaults
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSettingChange = async (setting, value) => {
+    try {
+      const newSettings = {
+        notifications_enabled: setting === 'notifications' ? value : notifications,
+        email_updates_enabled: setting === 'emailUpdates' ? value : emailUpdates,
+        dark_mode: setting === 'darkMode' ? value : darkMode,
+        location_services: setting === 'locationServices' ? value : locationServices,
+      };
+
+      await settingsService.updateSettings(newSettings);
+      
+      // Add delay to ensure database persistence
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (setting === 'notifications') setNotifications(value);
+      if (setting === 'emailUpdates') setEmailUpdates(value);
+      if (setting === 'darkMode') setDarkMode(value);
+      if (setting === 'locationServices') setLocationServices(value);
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      Alert.alert('Error', 'Failed to update setting');
+    }
+  };
+
+  const SettingItem = ({ icon, label, description, value, setting }) => (
     <View style={styles.settingItem}>
       <View style={styles.settingInfo}>
         <Ionicons name={icon} size={24} color="#007AFF" />
@@ -26,12 +76,20 @@ const SettingsScreen = ({ navigation }) => {
       </View>
       <Switch
         value={value}
-        onValueChange={onChange}
+        onValueChange={(newValue) => handleSettingChange(setting, newValue)}
         trackColor={{ false: '#ddd', true: '#81C784' }}
         thumbColor="#fff"
       />
     </View>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -50,14 +108,14 @@ const SettingsScreen = ({ navigation }) => {
           label="Push Notifications"
           description="Receive task and message alerts"
           value={notifications}
-          onChange={setNotifications}
+          setting="notifications"
         />
         <SettingItem
           icon="mail"
           label="Email Updates"
           description="Get email newsletters and updates"
           value={emailUpdates}
-          onChange={setEmailUpdates}
+          setting="emailUpdates"
         />
       </View>
 
@@ -68,7 +126,7 @@ const SettingsScreen = ({ navigation }) => {
           label="Dark Mode"
           description="Use dark theme"
           value={darkMode}
-          onChange={setDarkMode}
+          setting="darkMode"
         />
       </View>
 
@@ -79,7 +137,7 @@ const SettingsScreen = ({ navigation }) => {
           label="Location Services"
           description="Allow access to your location"
           value={locationServices}
-          onChange={setLocationServices}
+          setting="locationServices"
         />
       </View>
 
@@ -198,6 +256,29 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 14,
     fontWeight: '500',
+    color: '#333',
+    marginLeft: 12,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  dangerButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+});
+
+export default SettingsScreen;
     color: '#333',
     marginLeft: 12,
   },

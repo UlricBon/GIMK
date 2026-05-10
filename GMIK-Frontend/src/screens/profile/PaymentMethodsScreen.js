@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,37 +7,45 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { paymentService } from '../../services/api';
 
 const PaymentMethodsScreen = ({ navigation }) => {
-  const [paymentMethods, setPaymentMethods] = useState([
-    {
-      id: '1',
-      type: 'credit_card',
-      name: 'Visa',
-      last4: '4242',
-      expiry: '12/25',
-      isDefault: true,
-    },
-    {
-      id: '2',
-      type: 'debit_card',
-      name: 'Mastercard',
-      last4: '5555',
-      expiry: '08/24',
-      isDefault: false,
-    },
-  ]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSetDefault = (id) => {
-    setPaymentMethods(
-      paymentMethods.map(method => ({
-        ...method,
-        isDefault: method.id === id,
-      }))
-    );
-    Alert.alert('Success', 'Default payment method updated!');
+  useEffect(() => {
+    loadPaymentMethods();
+  }, []);
+
+  const loadPaymentMethods = async () => {
+    try {
+      setLoading(true);
+      const response = await paymentService.getPaymentMethods();
+      const methods = response.data?.methods || [];
+      setPaymentMethods(methods);
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+      // Use empty list if error
+      setPaymentMethods([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetDefault = async (id) => {
+    try {
+      await paymentService.setDefaultPaymentMethod(id);
+      // Add delay to ensure database persistence
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await loadPaymentMethods();
+      Alert.alert('Success', 'Default payment method updated!');
+    } catch (error) {
+      console.error('Error setting default:', error);
+      Alert.alert('Error', 'Failed to update payment method');
+    }
   };
 
   const handleRemove = (id) => {
@@ -45,9 +53,17 @@ const PaymentMethodsScreen = ({ navigation }) => {
       { text: 'Cancel', onPress: () => {} },
       {
         text: 'Remove',
-        onPress: () => {
-          setPaymentMethods(paymentMethods.filter(m => m.id !== id));
-          Alert.alert('Success', 'Payment method removed!');
+        onPress: async () => {
+          try {
+            await paymentService.removePaymentMethod(id);
+            // Add delay to ensure database persistence
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await loadPaymentMethods();
+            Alert.alert('Success', 'Payment method removed!');
+          } catch (error) {
+            console.error('Error removing payment method:', error);
+            Alert.alert('Error', 'Failed to remove payment method');
+          }
         },
         style: 'destructive',
       },
@@ -55,7 +71,7 @@ const PaymentMethodsScreen = ({ navigation }) => {
   };
 
   const PaymentCard = ({ method }) => (
-    <View style={[styles.card, method.isDefault && styles.defaultCard]}>
+    <View style={[styles.card, method.is_default && styles.defaultCard]}>
       <View style={styles.cardHeader}>
         <View style={styles.cardInfo}>
           <View style={styles.cardIcon}>
@@ -66,12 +82,12 @@ const PaymentMethodsScreen = ({ navigation }) => {
             />
           </View>
           <View>
-            <Text style={styles.cardName}>{method.name}</Text>
-            <Text style={styles.cardNumber}>•••• {method.last4}</Text>
-            <Text style={styles.cardExpiry}>Expires {method.expiry}</Text>
+            <Text style={styles.cardName}>{method.card_holder_name}</Text>
+            <Text style={styles.cardNumber}>•••• {method.last_four_digits}</Text>
+            <Text style={styles.cardExpiry}>Expires {method.expiry_date}</Text>
           </View>
         </View>
-        {method.isDefault && (
+        {method.is_default && (
           <View style={styles.defaultBadge}>
             <Text style={styles.defaultBadgeText}>Default</Text>
           </View>
@@ -83,7 +99,7 @@ const PaymentMethodsScreen = ({ navigation }) => {
           onPress={() => handleSetDefault(method.id)}
         >
           <Text style={styles.actionButtonText}>
-            {method.isDefault ? 'Default' : 'Set as Default'}
+            {method.is_default ? 'Default' : 'Set as Default'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -96,6 +112,14 @@ const PaymentMethodsScreen = ({ navigation }) => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -107,12 +131,20 @@ const PaymentMethodsScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.content}>
-        <FlatList
-          data={paymentMethods}
-          renderItem={({ item }) => <PaymentCard method={item} />}
-          keyExtractor={item => item.id}
-          scrollEnabled={false}
-        />
+        {paymentMethods.length > 0 ? (
+          <FlatList
+            data={paymentMethods}
+            renderItem={({ item }) => <PaymentCard method={item} />}
+            keyExtractor={item => item.id}
+            scrollEnabled={false}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="card-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No payment methods yet</Text>
+            <Text style={styles.emptySubtext}>Add a payment method to get started</Text>
+          </View>
+        )}
 
         <TouchableOpacity style={styles.addButton}>
           <Ionicons name="add-circle" size={20} color="#fff" />
@@ -198,6 +230,71 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   defaultBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  removeButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  removeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF3B30',
+  },
+  addButton: {
+    flexDirection: 'row',
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#999',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#ccc',
+    marginTop: 4,
+  },
+});
+
+export default PaymentMethodsScreen;
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',

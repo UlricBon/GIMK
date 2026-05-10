@@ -38,6 +38,7 @@ export const initializeTables = () => {
         location_address TEXT,
         status TEXT DEFAULT 'posted',
         urgency TEXT DEFAULT 'normal',
+        post_type TEXT DEFAULT 'job_offer',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         expires_at DATETIME,
@@ -66,16 +67,20 @@ export const initializeTables = () => {
     db.run(`
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
-        task_id TEXT NOT NULL,
+        task_id TEXT,
         sender_id TEXT NOT NULL,
+        recipient_id TEXT,
         content TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_read INTEGER DEFAULT 0,
         FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
     db.run(`CREATE INDEX IF NOT EXISTS idx_messages_task_id ON messages(task_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON messages(recipient_id)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`);
 
     // Payments table
@@ -131,6 +136,55 @@ export const initializeTables = () => {
     `);
     db.run(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`);
+
+    // User Settings table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        notifications_enabled INTEGER DEFAULT 1,
+        email_updates_enabled INTEGER DEFAULT 1,
+        dark_mode INTEGER DEFAULT 0,
+        location_services INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)`);
+
+    // Support Tickets table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)`);
+
+    // Payment Methods table (if not exists)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS payment_methods (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        card_holder_name TEXT NOT NULL,
+        card_number_masked TEXT NOT NULL,
+        last_four_digits TEXT NOT NULL,
+        expiry_date TEXT NOT NULL,
+        type TEXT DEFAULT 'credit_card',
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_payment_methods_user_id ON payment_methods(user_id)`);
 
     saveDatabase();
     console.log('✓ Database tables initialized successfully');

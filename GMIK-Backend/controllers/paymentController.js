@@ -39,17 +39,118 @@ export const getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    // Get payment methods for this user
     const result = await query(
-      `SELECT p.*, t.title, u.display_name
-       FROM payments p
-       JOIN tasks t ON p.task_id = t.id
-       JOIN users u ON CASE WHEN p.dropper_id = $1 THEN p.chaser_id ELSE p.dropper_id END = u.id
-       WHERE p.dropper_id = $1 OR p.chaser_id = $1
-       ORDER BY p.created_at DESC`,
+      `SELECT id, card_holder_name, last_four_digits, expiry_date, type, is_default, created_at
+       FROM payment_methods
+       WHERE user_id = $1
+       ORDER BY is_default DESC, created_at DESC`,
       [userId]
     );
 
-    res.json({ payments: result.rows });
+    res.json({ methods: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getPaymentMethods = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const result = await query(
+      `SELECT id, card_holder_name, last_four_digits, expiry_date, type, is_default
+       FROM payment_methods
+       WHERE user_id = $1
+       ORDER BY is_default DESC, created_at DESC`,
+      [userId]
+    );
+
+    res.json({ methods: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const addPaymentMethod = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { card_holder_name, card_number, expiry_date } = req.body;
+
+    if (!card_holder_name || !card_number || !expiry_date) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const methodId = uuidv4();
+    const lastFour = card_number.slice(-4);
+    const maskedNumber = '*'.repeat(card_number.length - 4) + lastFour;
+
+    await query(
+      `INSERT INTO payment_methods (id, user_id, card_holder_name, card_number_masked, last_four_digits, expiry_date, type, is_default)
+       VALUES ($1, $2, $3, $4, $5, $6, 'credit_card', 0)`,
+      [methodId, userId, card_holder_name, maskedNumber, lastFour, expiry_date]
+    );
+
+    res.status(201).json({ message: 'Payment method added', method_id: methodId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const setDefaultPaymentMethod = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { method_id } = req.params;
+
+    // Verify method belongs to user
+    const methodResult = await query(
+      'SELECT id FROM payment_methods WHERE id = $1 AND user_id = $2',
+      [method_id, userId]
+    );
+
+    if (methodResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment method not found' });
+    }
+
+    // Remove default from all methods for this user
+    await query(
+      'UPDATE payment_methods SET is_default = 0 WHERE user_id = $1',
+      [userId]
+    );
+
+    // Set as default
+    await query(
+      'UPDATE payment_methods SET is_default = 1 WHERE id = $1',
+      [method_id]
+    );
+
+    res.json({ message: 'Default payment method updated' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const removePaymentMethod = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { method_id } = req.params;
+
+    // Verify method belongs to user
+    const methodResult = await query(
+      'SELECT id FROM payment_methods WHERE id = $1 AND user_id = $2',
+      [method_id, userId]
+    );
+
+    if (methodResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment method not found' });
+    }
+
+    await query(
+      'DELETE FROM payment_methods WHERE id = $1',
+      [method_id]
+    );
+
+    res.json({ message: 'Payment method removed' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -63,8 +63,9 @@ CREATE INDEX idx_task_acceptance_status ON task_acceptance(status);
 -- Messages Table
 CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id UUID REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   is_read BOOLEAN DEFAULT FALSE
@@ -72,6 +73,7 @@ CREATE TABLE messages (
 
 CREATE INDEX idx_messages_task_id ON messages(task_id);
 CREATE INDEX idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX idx_messages_recipient_id ON messages(recipient_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
 
 -- Payments Table

@@ -30,13 +30,16 @@ const BrowseScreen = ({ navigation }) => {
     try {
       // Fetch tasks from backend API
       const params = {
-        category: selectedCategory === 'All' ? null : selectedCategory,
-        search: searchQuery || null,
+        category: selectedCategory === 'All' ? undefined : selectedCategory,
+        search: searchQuery || undefined,
       };
+      console.log('Fetching tasks with params:', params);
       const response = await taskService.getTasks(params);
+      console.log('Tasks response:', response);
       setTasks(response.data?.tasks || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
     } finally {
       setLoading(false);
     }
@@ -50,7 +53,7 @@ const BrowseScreen = ({ navigation }) => {
 
   const filteredTasks = tasks.filter(task =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    task.author.toLowerCase().includes(searchQuery.toLowerCase())
+    (task.display_name && task.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const TaskCard = ({ task }) => (
@@ -61,21 +64,25 @@ const BrowseScreen = ({ navigation }) => {
       <View style={styles.taskHeader}>
         <View style={styles.authorInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{task.author[0]}</Text>
+            <Text style={styles.avatarText}>{task.display_name ? task.display_name[0] : '?'}</Text>
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.taskTitle}>{task.title}</Text>
-            <Text style={styles.authorName}>{task.author}</Text>
+            <Text style={styles.authorName}>{task.display_name || 'Unknown'}</Text>
           </View>
         </View>
-        <View style={styles.categoryTag}>
-          <Text style={styles.categoryTagText}>{task.category}</Text>
+        <View style={styles.tagsContainer}>
+          <View style={[styles.categoryTag, task.post_type === 'job_seeker' ? styles.jobSeekerTag : styles.hiringTag]}>
+            <Text style={[styles.categoryTagText, task.post_type === 'job_seeker' ? styles.jobSeekerTagText : styles.hiringTagText]}>
+              {task.post_type === 'job_seeker' ? 'Seeking' : 'Hiring'}
+            </Text>
+          </View>
         </View>
       </View>
-      {task.budget && (
+      {task.compensation && (
         <View style={styles.budgetContainer}>
           <Ionicons name="cash" size={16} color="#007AFF" />
-          <Text style={styles.budgetText}>${task.budget}</Text>
+          <Text style={styles.budgetText}>₱{task.compensation}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -248,16 +255,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
+  tagsContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    marginLeft: 8,
+  },
   categoryTag: {
-    backgroundColor: '#E8F4FF',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+    marginBottom: 4,
   },
   categoryTagText: {
     fontSize: 11,
-    color: '#007AFF',
     fontWeight: '500',
+  },
+  hiringTag: {
+    backgroundColor: '#E8F4FF',
+  },
+  hiringTagText: {
+    color: '#007AFF',
+  },
+  jobSeekerTag: {
+    backgroundColor: '#F0E8FF',
+  },
+  jobSeekerTagText: {
+    color: '#7C3AED',
   },
   budgetContainer: {
     flexDirection: 'row',

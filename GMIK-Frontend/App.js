@@ -51,6 +51,9 @@ const WebAppContent = () => {
   const [profileScreen, setProfileScreen] = useState(null);
   const [taskDetailsId, setTaskDetailsId] = useState(null);
   const [editTaskId, setEditTaskId] = useState(null);
+  const [directMessageUserId, setDirectMessageUserId] = useState(null);
+  const [directMessageUserName, setDirectMessageUserName] = useState(null);
+  const [directMessagePostTitle, setDirectMessagePostTitle] = useState(null);
   const [initialized, setInitialized] = useState(false);
   const { isLoggedIn } = useSelector(state => state.auth);
 
@@ -149,10 +152,18 @@ const WebAppContent = () => {
         <Text style={styles.title}>GMIK</Text>
       </View>
       <View style={styles.content}>
-        {currentScreen === 'Post' && <PostScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Post' && <PostScreen navigation={{ navigate: (screen, params) => { 
+          if (screen === 'TaskDetails') setTaskDetailsId(params.taskId);
+          if (screen === 'Chat') {
+            setDirectMessageUserId(params.directMessageUserId);
+            setDirectMessageUserName(params.directMessageUserName);
+            setDirectMessagePostTitle(params.postTitle);
+            setCurrentScreen('Chat');
+          }
+        } }} />}
         {currentScreen === 'Browse' && <BrowseScreen navigation={{ navigate: (screen, params) => { if (screen === 'TaskDetails') setTaskDetailsId(params.taskId); } }} />}
         {currentScreen === 'MyDocuments' && <MyDocumentsScreen navigation={{ navigate: (screen, params) => { if (screen === 'TaskDetails') setTaskDetailsId(params.taskId); if (screen === 'EditTask') setEditTaskId(params.taskId); } }} />}
-        {currentScreen === 'Chat' && <ChatScreen navigation={{ navigate: () => {} }} />}
+        {currentScreen === 'Chat' && <ChatScreen route={{ params: { directMessageUserId, directMessageUserName, postTitle: directMessagePostTitle } }} navigation={{ navigate: () => {} }} />}
         {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen), logout: () => { setCurrentScreen('Login'); setProfileScreen(null); } }} />}
       </View>
       <View style={styles.navbar}>

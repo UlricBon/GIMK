@@ -13,6 +13,7 @@ import taskRoutes from './routes/taskRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 
@@ -61,6 +62,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/support', supportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 

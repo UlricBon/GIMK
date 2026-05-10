@@ -3,41 +3,41 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { userService } from '../../services/api';
+import { userService, taskService } from '../../services/api';
 import { logout } from '../../redux/authSlice';
 
 const ProfileScreen = ({ navigation }) => {
   const { user } = useSelector(state => state.auth);
   const [profile, setProfile] = useState(null);
+  const [userTasks, setUserTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
 
   useEffect(() => {
-    loadProfile();
+    loadProfileAndTasks();
   }, []);
 
-  const loadProfile = async () => {
+  const loadProfileAndTasks = async () => {
     try {
       // Fetch profile from backend API
       if (user) {
-        const response = await userService.getUserProfile();
-        setProfile(response.data);
+        const profileResponse = await userService.getUserProfile();
+        setProfile(profileResponse.data?.user || user);
+        
+        // Fetch user's tasks
+        const tasksResponse = await taskService.getUserTasks();
+        setUserTasks(tasksResponse.data?.tasks || []);
       } else {
-        // Fallback to Redux user data if API fails
-        setProfile({
-          display_name: 'Regular User',
-          email: 'user@gmik.com',
-          completed_tasks_count: 0,
-        });
+        setProfile(user);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -106,15 +106,47 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <View style={styles.divider} />
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>4.8</Text>
-          <Text style={styles.statLabel}>Rating</Text>
+          <Text style={styles.statNumber}>{userTasks?.length || 0}</Text>
+          <Text style={styles.statLabel}>My Posts</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>24</Text>
-          <Text style={styles.statLabel}>Reviews</Text>
+          <Text style={styles.statNumber}>4.8</Text>
+          <Text style={styles.statLabel}>Rating</Text>
         </View>
       </View>
+
+      {userTasks && userTasks.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Posts</Text>
+            <TouchableOpacity onPress={() => navigation?.navigate('MyDocuments')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={userTasks.slice(0, 3)}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.taskItem}
+                onPress={() => navigation?.navigate('TaskDetails', { taskId: item.id })}
+              >
+                <View style={styles.taskInfo}>
+                  <Text style={styles.taskTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.taskCategory}>{item.category}</Text>
+                </View>
+                <View style={styles.taskMeta}>
+                  <Text style={styles.taskStatus}>{item.status}</Text>
+                  <Text style={styles.taskCompensation}>₱{item.compensation}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -278,6 +310,55 @@ const styles = StyleSheet.create({
   menuItemSubtext: {
     fontSize: 12,
     color: '#999',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewAllText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  taskInfo: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  taskCategory: {
+    fontSize: 12,
+    color: '#007AFF',
+  },
+  taskMeta: {
+    alignItems: 'flex-end',
+  },
+  taskStatus: {
+    fontSize: 11,
+    color: '#999',
+    textTransform: 'capitalize',
+    marginBottom: 4,
+  },
+  taskCompensation: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4CAF50',
   },
   logoutButton: {
     backgroundColor: '#FF3B30',

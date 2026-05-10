@@ -21,6 +21,7 @@ const PostScreen = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
   const [category, setCategory] = useState('General');
+  const [postType, setPostType] = useState('job_offer'); // 'job_offer' or 'job_seeker'
   const [loading, setLoading] = useState(false);
   const [feedLoading, setFeedLoading] = useState(true);
   const [postedTask, setPostedTask] = useState(null);
@@ -36,8 +37,15 @@ const PostScreen = ({ navigation }) => {
   const loadFeed = async () => {
     setFeedLoading(true);
     try {
-      const response = await taskService.getTasks({ category: 'all', limit: 20 });
-      setPosts(response.data?.tasks || []);
+      // Fetch all posts without limit
+      const response = await taskService.getTasks({ status: 'posted' });
+      const allPosts = response.data?.tasks || [];
+      // Sort by newest first
+      const sortedPosts = allPosts.sort((a, b) => 
+        new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      );
+      setPosts(sortedPosts);
+      console.log(`Loaded ${sortedPosts.length} posts`);
     } catch (error) {
       console.error('Error loading posts:', error);
       Alert.alert('Error', 'Failed to load posts');
@@ -59,6 +67,7 @@ const PostScreen = ({ navigation }) => {
         description,
         category,
         compensation: budget ? parseFloat(budget) : 0,
+        postType, // Add post type
         // Mock location data (in production, get user's actual location)
         latitude: 40.7128,
         longitude: -74.0060,
@@ -75,9 +84,10 @@ const PostScreen = ({ navigation }) => {
         title: newTask.title,
         description: newTask.description,
         category: newTask.category,
-        budget: newTask.compensation ? `$${newTask.compensation}` : 'Not specified',
+        budget: newTask.compensation ? `₱${newTask.compensation.toLocaleString()}` : 'Not specified',
         author: user?.display_name || 'You',
         createdAt: new Date().toLocaleDateString(),
+        postType: postType,
       });
       
       setScreen('success');
@@ -97,6 +107,7 @@ const PostScreen = ({ navigation }) => {
     setDescription('');
     setBudget('');
     setCategory('General');
+    setPostType('job_offer');
   };
 
   const handleViewPost = () => {
@@ -110,34 +121,116 @@ const PostScreen = ({ navigation }) => {
     setDescription('');
     setBudget('');
     setCategory('General');
+    setPostType('job_offer');
     setPostedTask(null);
   };
 
-  const PostCard = ({ item }) => (
-    <View style={styles.postCard}>
-      <View style={styles.postHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.author?.[0] || 'U'}</Text>
-        </View>
-        <View style={styles.postInfo}>
-          <Text style={styles.postTitle}>{item.title}</Text>
-          <Text style={styles.postAuthor}>{item.author || 'Anonymous'}</Text>
-        </View>
-      </View>
+  const PostCard = ({ item }) => {
+    const displayName = item.display_name || item.author || 'Anonymous';
+    const compensation = item.compensation || 0;
+    const postTypeLabel = item.post_type === 'job_seeker' ? 'Seeking' : 'Hiring';
+    const postTypeBgColor = item.post_type === 'job_seeker' ? '#E8D5FF' : '#D5E5FF';
+    const postTypeTextColor = item.post_type === 'job_seeker' ? '#7C3AED' : '#007AFF';
+    const createdDate = item.created_at 
+      ? new Date(item.created_at).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: item.created_at.includes(new Date().getFullYear().toString()) ? undefined : 'numeric'
+        })
+      : 'Recently';
 
-      <View style={styles.postBody}>
-        <Text style={styles.postDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <View style={styles.postMeta}>
-          <View style={styles.categoryTag}>
-            <Text style={styles.categoryTagText}>{item.category}</Text>
+    return (
+      <View 
+        style={styles.postCard}
+      >
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation?.navigate('TaskDetails', { taskId: item.id })}
+        >
+          <View style={styles.postHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{displayName?.[0] || 'U'}</Text>
+            </View>
+            <View style={styles.postInfo}>
+              <View style={styles.postTitleRow}>
+                <Text style={styles.postTitle} numberOfLines={1}>{item.title}</Text>
+                <View style={[styles.postTypeBadge, { backgroundColor: postTypeBgColor }]}>
+                  <Text style={[styles.postTypeBadgeText, { color: postTypeTextColor }]}>
+                    {postTypeLabel}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.postAuthor}>{displayName}</Text>
+              <Text style={styles.postDate}>{createdDate}</Text>
+            </View>
           </View>
-          <Text style={styles.budget}>${item.budget || '0'}</Text>
+
+          <View style={styles.postBody}>
+            <Text style={styles.postDescription} numberOfLines={3}>
+              {item.description}
+            </Text>
+            
+            <View style={styles.postMetaTags}>
+              <View style={[styles.postTypeTag, { backgroundColor: postTypeBgColor }]}>
+                <Text style={[styles.postTypeTagText, { color: postTypeTextColor }]}>
+                  {postTypeLabel}
+                </Text>
+              </View>
+              <View style={styles.categoryTag}>
+                <Text style={styles.categoryTagText}>{item.category}</Text>
+              </View>
+              {item.urgency && (
+                <View style={[styles.urgencyTag, item.urgency === 'high' && styles.urgencyTagHigh]}>
+                  <Text style={styles.urgencyTagText}>{item.urgency.toUpperCase()}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.postFooter}>
+              <Text style={styles.budget}>₱{compensation.toLocaleString()}</Text>
+              {item.location_address && (
+                <View style={styles.locationContainer}>
+                  <Ionicons name="location" size={14} color="#666" />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {item.location_address}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.postActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            activeOpacity={0.6}
+            onPress={() => {
+              console.log('View Details pressed for task:', item.id);
+              navigation?.navigate('TaskDetails', { taskId: item.id });
+            }}
+          >
+            <Ionicons name="eye-outline" size={16} color="#007AFF" />
+            <Text style={styles.actionButtonText}>View Details</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            activeOpacity={0.6}
+            onPress={() => {
+              console.log('Message pressed for user:', displayName);
+              navigation?.navigate('Chat', { 
+                directMessageUserId: item.dropper_id,
+                directMessageUserName: displayName,
+                postTitle: item.title
+              });
+            }}
+          >
+            <Ionicons name="mail-outline" size={16} color="#4CAF50" />
+            <Text style={[styles.actionButtonText, { color: '#4CAF50' }]}>Message</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (feedLoading && screen === 'feed' && posts.length === 0) {
     return (
@@ -170,6 +263,8 @@ const PostScreen = ({ navigation }) => {
               renderItem={({ item }) => <PostCard item={item} />}
               keyExtractor={item => item.id?.toString()}
               scrollEnabled={false}
+              nestedScrollEnabled={false}
+              pointerEvents="auto"
             />
           ) : (
             <View style={styles.emptyState}>
@@ -190,6 +285,46 @@ const PostScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.form}>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Post Type *</Text>
+              <View style={styles.postTypeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.postTypeButton,
+                    postType === 'job_offer' && styles.postTypeButtonActive,
+                  ]}
+                  onPress={() => setPostType('job_offer')}
+                  disabled={loading}
+                >
+                  <Text
+                    style={[
+                      styles.postTypeText,
+                      postType === 'job_offer' && styles.postTypeTextActive,
+                    ]}
+                  >
+                    Hiring
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.postTypeButton,
+                    postType === 'job_seeker' && styles.postTypeButtonActive,
+                  ]}
+                  onPress={() => setPostType('job_seeker')}
+                  disabled={loading}
+                >
+                  <Text
+                    style={[
+                      styles.postTypeText,
+                      postType === 'job_seeker' && styles.postTypeTextActive,
+                    ]}
+                  >
+                    Job Seeker
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.formGroup}>
               <Text style={styles.label}>Title</Text>
               <TextInput
@@ -278,9 +413,16 @@ const PostScreen = ({ navigation }) => {
           <Text style={styles.successSubtitle}>Your task is now live on the platform</Text>
 
           <View style={styles.postPreview}>
-            <Text style={styles.previewTitle}>{postedTask.title}</Text>
+            <View style={styles.previewHeader}>
+              <Text style={styles.previewTitle}>{postedTask.title}</Text>
+              <View style={styles.previewPostType}>
+                <Text style={styles.previewPostTypeText}>
+                  {postedTask.postType === 'job_seeker' ? 'Seeking' : 'Hiring'}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.previewCategory}>{postedTask.category}</Text>
-            <Text style={styles.previewDescription} numberOfLines={2}>
+            <Text style={styles.previewDescription}>
               {postedTask.description}
             </Text>
             <View style={styles.previewFooter}>
@@ -369,18 +511,39 @@ const styles = StyleSheet.create({
   postInfo: {
     flex: 1,
   },
+  postTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
   postTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    flex: 1,
+  },
+  postTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  postTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   postAuthor: {
     fontSize: 12,
     color: '#666',
+    marginBottom: 2,
+  },
+  postDate: {
+    fontSize: 11,
+    color: '#999',
   },
   postBody: {
     padding: 16,
+    paddingTop: 12,
   },
   postDescription: {
     fontSize: 14,
@@ -388,10 +551,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 20,
   },
-  postMeta: {
+  postMetaTags: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  postTypeTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  postTypeTagText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   categoryTag: {
     backgroundColor: '#E3F2FD',
@@ -404,10 +577,67 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#007AFF',
   },
+  urgencyTag: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  urgencyTagHigh: {
+    backgroundColor: '#FFEBEE',
+  },
+  urgencyTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FF9800',
+  },
+  postFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
   budget: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#4CAF50',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    marginLeft: 16,
+  },
+  locationText: {
+    fontSize: 11,
+    color: '#666',
+    flex: 1,
+  },
+  postActions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
+    gap: 6,
+    minHeight: 44,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   emptyState: {
     alignItems: 'center',
@@ -463,6 +693,33 @@ const styles = StyleSheet.create({
   textArea: {
     height: 120,
     paddingTop: 12,
+  },
+  postTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  postTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  postTypeButtonActive: {
+    borderColor: '#007AFF',
+    backgroundColor: '#007AFF',
+  },
+  postTypeText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  postTypeTextActive: {
+    color: '#fff',
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -535,11 +792,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
   },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   previewTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    flex: 1,
+  },
+  previewPostType: {
+    backgroundColor: '#E8D5FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  previewPostTypeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   previewCategory: {
     fontSize: 12,

@@ -59,3 +59,50 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getDirectMessages = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const senderId = req.user.userId;
+
+    // Get all messages between two users (where task_id is NULL for direct messages)
+    const result = await query(
+      `SELECT m.*, u.display_name, u.profile_picture_url
+       FROM messages m
+       JOIN users u ON m.sender_id = u.id
+       WHERE m.task_id IS NULL
+       AND (
+         (m.sender_id = $1 AND m.recipient_id = $2) OR
+         (m.sender_id = $2 AND m.recipient_id = $1)
+       )
+       ORDER BY m.created_at ASC`,
+      [senderId, userId]
+    );
+
+    res.json({ messages: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const sendDirectMessage = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { content } = req.body;
+    const senderId = req.user.userId;
+
+    if (!content) {
+      return res.status(400).json({ error: 'Message content required' });
+    }
+
+    const messageId = uuidv4();
+    await query(
+      'INSERT INTO messages (id, sender_id, recipient_id, content) VALUES ($1, $2, $3, $4)',
+      [messageId, senderId, userId, content]
+    );
+
+    res.status(201).json({ message: 'Message sent' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

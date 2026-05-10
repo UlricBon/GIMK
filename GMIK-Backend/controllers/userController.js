@@ -1,4 +1,5 @@
 import { query } from '../database/db.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -22,7 +23,7 @@ export const getUserProfile = async (req, res) => {
 export const updateUserProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { displayName, profilePictureUrl } = req.body;
+    const { displayName, profilePictureUrl, bio, location } = req.body;
 
     let updateFields = [];
     let params = [];
@@ -45,10 +46,76 @@ export const updateUserProfile = async (req, res) => {
     }
 
     params.push(userId);
-    const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${paramIndex} RETURNING *`;
+    const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${paramIndex} RETURNING id, email, display_name, profile_picture_url, completed_tasks_count, created_at`;
 
     const result = await query(updateQuery, params);
     res.json({ message: 'Profile updated', user: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getUserSettings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const result = await query(
+      `SELECT * FROM user_settings WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Create default settings if they don't exist
+      const settingsId = uuidv4();
+      await query(
+        `INSERT INTO user_settings (id, user_id, notifications_enabled, email_updates_enabled, dark_mode, location_services)
+         VALUES ($1, $2, 1, 1, 0, 1)`,
+        [settingsId, userId]
+      );
+
+      return res.json({ 
+        settings: {
+          notifications_enabled: true,
+          email_updates_enabled: true,
+          dark_mode: false,
+          location_services: true
+        }
+      });
+    }
+
+    const settings = result.rows[0];
+    res.json({ 
+      settings: {
+        notifications_enabled: !!settings.notifications_enabled,
+        email_updates_enabled: !!settings.email_updates_enabled,
+        dark_mode: !!settings.dark_mode,
+        location_services: !!settings.location_services
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateUserSettings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { notifications_enabled, email_updates_enabled, dark_mode, location_services } = req.body;
+
+    // Update or create settings
+    const result = await query(
+      `UPDATE user_settings 
+       SET notifications_enabled = $1, email_updates_enabled = $2, dark_mode = $3, location_services = $4, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $5
+       RETURNING *`,
+      [notifications_enabled ? 1 : 0, email_updates_enabled ? 1 : 0, dark_mode ? 1 : 0, location_services ? 1 : 0, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Settings not found' });
+    }
+
+    res.json({ message: 'Settings updated', settings: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
