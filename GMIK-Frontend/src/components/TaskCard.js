@@ -1,26 +1,44 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSelector } from 'react-redux';
+import { getTheme } from '../utils/theme';
 
 const TaskCard = ({ task, onPress }) => {
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+        },
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.cardHeader}>
-        <Text style={styles.title}>{task.title}</Text>
-        <Text style={styles.compensation}>₱{task.compensation}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{task.title}</Text>
+        <Text style={[styles.compensation, { color: theme.primary }]}>₱{task.compensation}</Text>
       </View>
 
-      <Text style={styles.description} numberOfLines={2}>
+      <Text style={[styles.description, { color: theme.textSecondary }]} numberOfLines={2}>
         {task.description}
       </Text>
 
       <View style={styles.footer}>
         <View style={styles.tagContainer}>
-          <Text style={styles.tag}>{task.category}</Text>
+          <Text style={[styles.tag, { backgroundColor: theme.borderLight, color: theme.text }]}>
+            {task.category}
+          </Text>
           {task.urgency && task.urgency !== 'normal' && (
-            <Text style={[styles.tag, styles.urgentTag]}>{task.urgency}</Text>
+            <Text style={[styles.tag, styles.urgentTag, { backgroundColor: '#FFE5E5', color: theme.danger }]}>
+              {task.urgency}
+            </Text>
           )}
         </View>
-        <Text style={styles.postedBy}>by {task.display_name}</Text>
+        <Text style={[styles.postedBy, { color: theme.textTertiary }]}>by {task.display_name}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -28,12 +46,10 @@ const TaskCard = ({ task, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#eee',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -50,11 +66,9 @@ const styles = StyleSheet.create({
   compensation: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
   },
   description: {
     fontSize: 13,
-    color: '#666',
     marginBottom: 10,
   },
   footer: {
@@ -68,19 +82,15 @@ const styles = StyleSheet.create({
   },
   tag: {
     fontSize: 11,
-    backgroundColor: '#f0f0f0',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
-    color: '#333',
   },
   urgentTag: {
-    backgroundColor: '#FFE5E5',
-    color: '#FF3B30',
+    fontWeight: '600',
   },
   postedBy: {
     fontSize: 12,
-    color: '#999',
   },
 });
 

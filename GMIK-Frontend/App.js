@@ -5,12 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from './src/redux/store';
 import { setSettings } from './src/redux/settingsSlice';
+import { getTheme } from './src/utils/theme';
+import { taskService } from './src/services/api';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import TaskDetailsScreen from './src/screens/tasks/TaskDetailsScreen';
 import EditTaskScreen from './src/screens/tasks/EditTaskScreen';
 import ChatScreen from './src/screens/chat/ChatScreen';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
+import UserProfileScreen from './src/screens/profile/UserProfileScreen';
 import PostScreen from './src/screens/PostScreen';
 import BrowseScreen from './src/screens/BrowseScreen';
 import MyDocumentsScreen from './src/screens/MyDocumentsScreen';
@@ -56,7 +59,11 @@ const WebAppContent = () => {
   const [directMessageUserName, setDirectMessageUserName] = useState(null);
   const [directMessagePostTitle, setDirectMessagePostTitle] = useState(null);
   const [initialized, setInitialized] = useState(false);
+  const [newPostsCount, setNewPostsCount] = useState(0);
+  const [lastSeenPostsCount, setLastSeenPostsCount] = useState(0);
   const { isLoggedIn } = useSelector(state => state.auth);
+  const darkMode = useSelector(state => state.settings.darkMode);
+  const theme = getTheme(darkMode);
 
   const dispatch = useDispatch();
 
@@ -107,6 +114,26 @@ const WebAppContent = () => {
     }
   }, [isLoggedIn]);
 
+  // Poll for new posts to update notification badge
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await taskService.getTasks({ 
+          status: 'posted',
+          limit: 1
+        });
+        const newCount = response.data?.total || 0;
+        setNewPostsCount(newCount);
+      } catch (error) {
+        console.error('Error polling new posts:', error);
+      }
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) {
     return (
       <View style={styles.webContainer}>
@@ -147,12 +174,48 @@ const WebAppContent = () => {
       </View>
     );
   }
+  if (profileScreen?.name === 'UserProfile') {
+    return (
+      <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
+        <UserProfileScreen
+          route={{ params: { userId: profileScreen.userId } }}
+          navigation={{
+            goBack: () => setProfileScreen(null),
+            navigate: (screen, params) => {
+              if (screen === 'Chat') {
+                setDirectMessageUserId(params?.directMessageUserId);
+                setDirectMessageUserName(params?.directMessageUserName);
+                setDirectMessagePostTitle(params?.postTitle || null);
+                setTaskDetailsId(null);
+                setProfileScreen(null);
+                setCurrentScreen('Chat');
+              }
+            },
+          }}
+        />
+      </View>
+    );
+  }
   if (taskDetailsId) {
     return (
-      <View style={styles.appContainer}>
+      <View style={[styles.appContainer, { backgroundColor: theme.background }]}>
         <TaskDetailsScreen
           route={{ params: { taskId: taskDetailsId } }}
-          navigation={{ goBack: () => setTaskDetailsId(null) }}
+          navigation={{
+            goBack: () => setTaskDetailsId(null),
+            navigate: (screen, params) => {
+              if (screen === 'UserProfile') {
+                setProfileScreen({ name: 'UserProfile', userId: params?.userId });
+              }
+              if (screen === 'Chat') {
+                setDirectMessageUserId(params?.directMessageUserId);
+                setDirectMessageUserName(params?.directMessageUserName);
+                setDirectMessagePostTitle(params?.postTitle || null);
+                setCurrentScreen('Chat');
+              }
+            },
+            setOptions: () => {},
+          }}
         />
       </View>
     );
@@ -170,10 +233,10 @@ const WebAppContent = () => {
 
   return (
     <View style={styles.appContainer}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.primary }]}>
         <Text style={styles.title}>GMIK</Text>
       </View>
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: theme.background }]}>
         {currentScreen === 'Post' && <PostScreen navigation={{ navigate: (screen, params) => { 
           if (screen === 'TaskDetails') setTaskDetailsId(params.taskId);
           if (screen === 'Chat') {
@@ -188,16 +251,41 @@ const WebAppContent = () => {
         {currentScreen === 'Chat' && <ChatScreen route={{ params: { directMessageUserId, directMessageUserName, postTitle: directMessagePostTitle } }} navigation={{ navigate: () => {} }} />}
         {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen), logout: () => { setCurrentScreen('Login'); setProfileScreen(null); } }} />}
       </View>
-      <View style={styles.navbar}>
+      <View style={[styles.navbar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
         {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.navButton, currentScreen === tab && styles.navButtonActive]}
-            onPress={() => setCurrentScreen(tab)}
+            style={[
+              styles.navButton,
+              currentScreen === tab && { borderBottomColor: theme.primary },
+            ]}
+            onPress={() => {
+              setCurrentScreen(tab);
+              if (tab === 'Post') {
+                setLastSeenPostsCount(newPostsCount);
+              }
+            }}
           >
-            <Text style={[styles.navButtonText, currentScreen === tab && styles.navButtonTextActive]}>
-              {tab === 'MyDocuments' ? 'My Docs' : tab}
-            </Text>
+            <View style={{ position: 'relative', alignItems: 'center' }}>
+              <Text
+                style={[
+                  styles.navButtonText,
+                  {
+                    color: currentScreen === tab ? theme.primary : theme.textSecondary,
+                    fontWeight: currentScreen === tab ? '600' : '500',
+                  },
+                ]}
+              >
+                {tab === 'MyDocuments' ? 'My Docs' : tab}
+              </Text>
+              {tab === 'Post' && newPostsCount > lastSeenPostsCount && (
+                <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+                  <Text style={styles.badgeText}>
+                    {newPostsCount - lastSeenPostsCount > 99 ? '99+' : newPostsCount - lastSeenPostsCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -301,6 +389,11 @@ const AppStack = () => (
       component={EditTaskScreen}
       options={{ title: 'Edit Task' }}
     />
+    <Stack.Screen
+      name="UserProfile"
+      component={UserProfileScreen}
+      options={{ title: 'User Profile' }}
+    />
   </Stack.Navigator>
 );
 
@@ -387,5 +480,24 @@ const styles = StyleSheet.create({
   navButtonTextActive: {
     color: '#007AFF',
     fontWeight: '600',
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
   },
 });

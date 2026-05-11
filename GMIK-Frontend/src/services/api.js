@@ -79,6 +79,12 @@ export const taskService = {
 export const userService = {
   getUserProfile: () =>
     apiClient.get('/users/profile'),
+  getUserById: (userId) =>
+    apiClient.get(`/users/${userId}`),
+  getUserRatings: (userId) =>
+    apiClient.get(`/users/${userId}/ratings`),
+  rateUser: (userId, rating, comment) =>
+    apiClient.post(`/users/${userId}/rate`, { rating, comment }),
   updateProfile: (data) =>
     apiClient.put('/users/profile', data),
 };

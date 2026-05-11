@@ -1,9 +1,74 @@
 import { query } from '../database/db.js';
 import { v4 as uuidv4 } from 'uuid';
+// Rate another user (1-5 stars, optional comment)
+export const rateUser = async (req, res) => {
+  try {
+    const raterId = req.user.userId;
+    const rateeId = req.params.id;
+    const { rating, comment } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be 1-5' });
+    }
+    if (raterId === rateeId) {
+      return res.status(400).json({ error: 'Cannot rate yourself' });
+    }
+    // Upsert (one rating per rater/ratee)
+    const id = uuidv4();
+    await query(
+      `INSERT INTO user_ratings (id, rater_id, ratee_id, rating, comment)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT(rater_id, ratee_id) DO UPDATE SET rating = $4, comment = $5, created_at = CURRENT_TIMESTAMP`,
+      [id, raterId, rateeId, rating, comment || null]
+    );
+    res.json({ message: 'Rating submitted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
+// Get ratings for a user (average, count, and recent ratings)
+export const getUserRatings = async (req, res) => {
+  try {
+    const rateeId = req.params.id;
+    const avgResult = await query(
+      `SELECT AVG(rating) as avg, COUNT(*) as count FROM user_ratings WHERE ratee_id = $1`,
+      [rateeId]
+    );
+    const ratingsResult = await query(
+      `SELECT rater_id, rating, comment, created_at FROM user_ratings WHERE ratee_id = $1 ORDER BY created_at DESC LIMIT 10`,
+      [rateeId]
+    );
+    res.json({
+      average: avgResult.rows[0].avg ? Number(avgResult.rows[0].avg).toFixed(2) : null,
+      count: Number(avgResult.rows[0].count),
+      ratings: ratingsResult.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
+    const result = await query(
+      `SELECT id, email, display_name, profile_picture_url, completed_tasks_count, created_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getUserById = async (req, res) => {
+  try {
+    const userId = req.params.id;
     const result = await query(
       `SELECT id, email, display_name, profile_picture_url, completed_tasks_count, created_at
        FROM users WHERE id = $1`,

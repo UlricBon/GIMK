@@ -75,9 +75,9 @@ const PostScreen = ({ navigation }) => {
         compensation: budget ? parseFloat(budget) : 0,
         postType, // Add post type
         // Mock location data (in production, get user's actual location)
-        latitude: 40.7128,
-        longitude: -74.0060,
-        address: 'New York, NY',
+        latitude: 14.5995,
+        longitude: 120.9842,
+        address: 'Manila, Philippines',
         urgency: 'normal',
       };
       
@@ -92,7 +92,7 @@ const PostScreen = ({ navigation }) => {
         category: newTask.category,
         budget: newTask.compensation ? `₱${newTask.compensation.toLocaleString()}` : 'Not specified',
         author: user?.display_name || 'You',
-        createdAt: new Date().toLocaleDateString(),
+        createdAt: new Date().toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }),
         postType: postType,
       });
       
@@ -138,7 +138,8 @@ const PostScreen = ({ navigation }) => {
     const postTypeBgColor = item.post_type === 'job_seeker' ? '#E8D5FF' : '#D5E5FF';
     const postTypeTextColor = item.post_type === 'job_seeker' ? '#7C3AED' : '#007AFF';
     const createdDate = item.created_at 
-      ? new Date(item.created_at).toLocaleDateString('en-US', { 
+      ? new Date(item.created_at).toLocaleDateString('en-PH', {
+          timeZone: 'Asia/Manila',
           month: 'short', 
           day: 'numeric',
           year: item.created_at.includes(new Date().getFullYear().toString()) ? undefined : 'numeric'
@@ -147,32 +148,44 @@ const PostScreen = ({ navigation }) => {
 
     return (
       <View 
-        style={styles.postCard}
+        style={[
+          styles.postCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
       >
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => navigation?.navigate('TaskDetails', { taskId: item.id })}
         >
-          <View style={styles.postHeader}>
-            <View style={styles.avatar}>
+          <View style={[styles.postHeader, { borderBottomColor: theme.borderLight }]}>
+            <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
               <Text style={styles.avatarText}>{displayName?.[0] || 'U'}</Text>
             </View>
             <View style={styles.postInfo}>
               <View style={styles.postTitleRow}>
-                <Text style={styles.postTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={[styles.postTitle, { color: theme.text }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
                 <View style={[styles.postTypeBadge, { backgroundColor: postTypeBgColor }]}>
                   <Text style={[styles.postTypeBadgeText, { color: postTypeTextColor }]}>
                     {postTypeLabel}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.postAuthor}>{displayName}</Text>
-              <Text style={styles.postDate}>{createdDate}</Text>
+              <Text style={[styles.postAuthor, { color: theme.textSecondary }]}>
+                {displayName}
+              </Text>
+              <Text style={[styles.postDate, { color: theme.textTertiary }]}>
+                {createdDate}
+              </Text>
             </View>
           </View>
 
           <View style={styles.postBody}>
-            <Text style={styles.postDescription} numberOfLines={3}>
+            <Text style={[styles.postDescription, { color: theme.textSecondary }]} numberOfLines={3}>
               {item.description}
             </Text>
             
@@ -182,22 +195,28 @@ const PostScreen = ({ navigation }) => {
                   {postTypeLabel}
                 </Text>
               </View>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryTagText}>{item.category}</Text>
+              <View style={[styles.categoryTag, { backgroundColor: theme.borderLight }]}>
+                <Text style={[styles.categoryTagText, { color: theme.primary }]}>
+                  {item.category}
+                </Text>
               </View>
               {item.urgency && (
                 <View style={[styles.urgencyTag, item.urgency === 'high' && styles.urgencyTagHigh]}>
-                  <Text style={styles.urgencyTagText}>{item.urgency.toUpperCase()}</Text>
+                  <Text style={[styles.urgencyTagText, { color: '#FF9800' }]}>
+                    {item.urgency.toUpperCase()}
+                  </Text>
                 </View>
               )}
             </View>
 
-            <View style={styles.postFooter}>
-              <Text style={styles.budget}>₱{compensation.toLocaleString()}</Text>
+            <View style={[styles.postFooter, { borderTopColor: theme.borderLight }]}>
+              <Text style={[styles.budget, { color: theme.success }]}>
+                ₱{compensation.toLocaleString()}
+              </Text>
               {item.location_address && (
                 <View style={styles.locationContainer}>
-                  <Ionicons name="location" size={14} color="#666" />
-                  <Text style={styles.locationText} numberOfLines={1}>
+                  <Ionicons name="location" size={14} color={theme.textSecondary} />
+                  <Text style={[styles.locationText, { color: theme.textTertiary }]} numberOfLines={1}>
                     {item.location_address}
                   </Text>
                 </View>
@@ -206,20 +225,20 @@ const PostScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.postActions}>
+        <View style={[styles.postActions, { borderTopColor: theme.borderLight }]}>
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: theme.borderLight }]}
             activeOpacity={0.6}
             onPress={() => {
               console.log('View Details pressed for task:', item.id);
               navigation?.navigate('TaskDetails', { taskId: item.id });
             }}
           >
-            <Ionicons name="eye-outline" size={16} color="#007AFF" />
-            <Text style={styles.actionButtonText}>View Details</Text>
+            <Ionicons name="eye-outline" size={16} color={theme.primary} />
+            <Text style={[styles.actionButtonText, { color: theme.primary }]}>View Details</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: theme.borderLight }]}
             activeOpacity={0.6}
             onPress={() => {
               console.log('Message pressed for user:', displayName);
@@ -230,8 +249,8 @@ const PostScreen = ({ navigation }) => {
               });
             }}
           >
-            <Ionicons name="mail-outline" size={16} color="#4CAF50" />
-            <Text style={[styles.actionButtonText, { color: '#4CAF50' }]}>Message</Text>
+            <Ionicons name="mail-outline" size={16} color={theme.success} />
+            <Text style={[styles.actionButtonText, { color: theme.success }]}>Message</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -240,8 +259,8 @@ const PostScreen = ({ navigation }) => {
 
   if (feedLoading && screen === 'feed' && posts.length === 0) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -334,11 +353,18 @@ const PostScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Title</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Title</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
                 placeholder="Enter post title"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.textTertiary}
                 value={title}
                 onChangeText={setTitle}
                 editable={!loading}
@@ -346,11 +372,19 @@ const PostScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Description</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
                 placeholder="Describe your task or project in detail"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.textTertiary}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -361,14 +395,15 @@ const PostScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Category</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Category</Text>
               <View style={styles.categoryContainer}>
                 {categories.map(cat => (
                   <TouchableOpacity
                     key={cat}
                     style={[
                       styles.categoryButton,
-                      category === cat && styles.categoryButtonActive,
+                      category === cat && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      category !== cat && { borderColor: theme.border, backgroundColor: theme.surface },
                     ]}
                     onPress={() => setCategory(cat)}
                     disabled={loading}
@@ -376,7 +411,7 @@ const PostScreen = ({ navigation }) => {
                     <Text
                       style={[
                         styles.categoryText,
-                        category === cat && styles.categoryTextActive,
+                        category === cat ? { color: '#fff' } : { color: theme.text },
                       ]}
                     >
                       {cat}
@@ -387,11 +422,18 @@ const PostScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Budget (Optional)</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Budget (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
                 placeholder="Enter budget amount"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.textTertiary}
                 value={budget}
                 onChangeText={setBudget}
                 keyboardType="decimal-pad"
@@ -400,7 +442,11 @@ const PostScreen = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-              style={[styles.postButton, loading && styles.postButtonDisabled]}
+              style={[
+                styles.postButton,
+                { backgroundColor: theme.primary },
+                loading && styles.postButtonDisabled,
+              ]}
               onPress={handlePost}
               disabled={loading}
             >
@@ -413,41 +459,51 @@ const PostScreen = ({ navigation }) => {
           </View>
         </>
       ) : screen === 'success' ? (
-        <View style={styles.successContainer}>
+        <View style={[styles.successContainer, { backgroundColor: theme.background }]}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={64} color="#4CAF50" />
+            <Ionicons name="checkmark-circle" size={64} color={theme.success} />
           </View>
-          <Text style={styles.successTitle}>Post Created Successfully!</Text>
-          <Text style={styles.successSubtitle}>Your task is now live on the platform</Text>
+          <Text style={[styles.successTitle, { color: theme.text }]}>Post Created Successfully!</Text>
+          <Text style={[styles.successSubtitle, { color: theme.textSecondary }]}>
+            Your task is now live on the platform
+          </Text>
 
-          <View style={styles.postPreview}>
+          <View style={[styles.postPreview, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.previewHeader}>
-              <Text style={styles.previewTitle}>{postedTask.title}</Text>
-              <View style={styles.previewPostType}>
-                <Text style={styles.previewPostTypeText}>
+              <Text style={[styles.previewTitle, { color: theme.text }]}>{postedTask.title}</Text>
+              <View style={[styles.previewPostType, { backgroundColor: theme.primary }]}>
+                <Text style={[styles.previewPostTypeText, { color: '#fff' }]}>
                   {postedTask.postType === 'job_seeker' ? 'Seeking' : 'Hiring'}
                 </Text>
               </View>
             </View>
-            <Text style={styles.previewCategory}>{postedTask.category}</Text>
-            <Text style={styles.previewDescription}>
+            <Text style={[styles.previewCategory, { color: theme.primary }]}>
+              {postedTask.category}
+            </Text>
+            <Text style={[styles.previewDescription, { color: theme.textSecondary }]}>
               {postedTask.description}
             </Text>
-            <View style={styles.previewFooter}>
-              <Text style={styles.previewBudget}>{postedTask.budget}</Text>
-              <Text style={styles.previewDate}>{postedTask.createdAt}</Text>
+            <View style={[styles.previewFooter, { borderTopColor: theme.borderLight }]}>
+              <Text style={[styles.previewBudget, { color: theme.success }]}>{postedTask.budget}</Text>
+              <Text style={[styles.previewDate, { color: theme.textTertiary }]}>{postedTask.createdAt}</Text>
             </View>
           </View>
 
           <View style={styles.successActions}>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleViewPost}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: theme.primary }]}
+              onPress={handleViewPost}
+            >
               <Ionicons name="eye" size={18} color="#fff" />
               <Text style={styles.primaryButtonText}>View Feed</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={handlePostAnother}>
-              <Ionicons name="add-circle" size={18} color="#007AFF" />
-              <Text style={styles.secondaryButtonText}>Post Another</Text>
+            <TouchableOpacity
+              style={[styles.secondaryButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              onPress={handlePostAnother}
+            >
+              <Ionicons name="add-circle" size={18} color={theme.primary} />
+              <Text style={[styles.secondaryButtonText, { color: theme.primary }]}>Post Another</Text>
             </TouchableOpacity>
           </View>
         </View>

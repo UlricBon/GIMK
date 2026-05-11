@@ -83,6 +83,22 @@ export const initializeTables = () => {
     db.run(`CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON messages(recipient_id)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`);
 
+    // User ratings table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_ratings (
+        id TEXT PRIMARY KEY,
+        rater_id TEXT NOT NULL,
+        ratee_id TEXT NOT NULL,
+        rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+        comment TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(rater_id, ratee_id),
+        FOREIGN KEY(rater_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(ratee_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_user_ratings_ratee_id ON user_ratings(ratee_id)`);
+
     // Payments table
     db.run(`
       CREATE TABLE IF NOT EXISTS payments (

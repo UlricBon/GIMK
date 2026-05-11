@@ -30,18 +30,18 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             style={{ paddingLeft: 15 }}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="chevron-back" size={24} color="#007AFF" />
+            <Ionicons name="chevron-back" size={24} color={theme.primary} />
           </TouchableOpacity>
         ),
         headerTitle: 'Task Details',
         headerTitleStyle: {
           fontSize: 18,
           fontWeight: '600',
-          color: '#000',
+          color: theme.text,
         },
         headerStyle: {
-          backgroundColor: '#fff',
-          shadowColor: '#000',
+          backgroundColor: theme.surface,
+          shadowColor: theme.border,
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.1,
           shadowRadius: 2,
@@ -51,7 +51,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     } catch (error) {
       console.warn('Error setting navigation options:', error);
     }
-  }, [navigation]);
+  }, [navigation, theme]);
 
   useEffect(() => {
     loadTaskDetails();
@@ -86,73 +86,78 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#007AFF" style={{ flex: 1 }} />;
+    return <ActivityIndicator size="large" color={theme.primary} style={{ flex: 1, backgroundColor: theme.background }} />;
   }
 
   if (!task) {
     return (
-      <View style={styles.container}>
-        <Text>Task not found</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }] }>
+        <Text style={{ color: theme.text }}>Task not found</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerBar}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.headerBar, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={24} color="#007AFF" />
+          <Ionicons name="chevron-back" size={24} color={theme.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Task Details</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Task Details</Text>
         <View style={{ width: 40 }} />
       </View>
       <ScrollView style={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{task.title}</Text>
-          <Text style={styles.category}>{task.category}</Text>
+        <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+          <Text style={[styles.title, { color: theme.text }]}>{task.title}</Text>
+          <Text style={[styles.category, { color: theme.primary, backgroundColor: theme.borderLight }]}>{task.category}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{task.description}</Text>
+        <View style={[styles.section, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Description</Text>
+          <Text style={[styles.description, { color: theme.textSecondary }]}>{task.description}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Details</Text>
+        <View style={[styles.section, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Details</Text>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Type:</Text>
-            <Text style={styles.value}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Type:</Text>
+            <Text style={[styles.value, { color: theme.text }]}>
               {task.post_type === 'job_seeker' ? 'Looking for Work' : 'Hiring'}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Compensation:</Text>
-            <Text style={styles.value}>₱{task.compensation}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Compensation:</Text>
+            <Text style={[styles.value, { color: theme.text }]}>₱{task.compensation}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Location:</Text>
-            <Text style={styles.value}>{task.location_address}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Location:</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{task.location_address}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Urgency:</Text>
-            <Text style={styles.value}>{task.urgency}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Urgency:</Text>
+            <Text style={[styles.value, { color: theme.text }]}>{task.urgency}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Posted by</Text>
-          <Text style={styles.postedBy}>{task.display_name}</Text>
-          <Text style={styles.completedTasks}>
+
+        <View style={[styles.section, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Posted by</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('UserProfile', { userId: task.dropper_id })}
+          >
+            <Text style={[styles.postedBy, { color: theme.primary, textDecorationLine: 'underline' }]}>{task.display_name}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.completedTasks, { color: theme.textTertiary }]}>
             {task.completed_tasks_count} tasks completed
           </Text>
         </View>
 
         {user?.id !== task.dropper_id && (
           <TouchableOpacity
-            style={[styles.acceptButton, accepting && styles.buttonDisabled]}
+            style={[styles.acceptButton, { backgroundColor: theme.primary }, accepting && styles.buttonDisabled]}
             onPress={handleAcceptTask}
             disabled={accepting}
           >
@@ -163,7 +168,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         )}
         
         {user?.id === task.dropper_id && (
-          <View style={styles.ownPostContainer}>
+          <View style={[styles.ownPostContainer, { backgroundColor: theme.borderLight, borderColor: theme.success }]}>
             <Text style={styles.ownPostText}>✓ This is your post</Text>
           </View>
         )}

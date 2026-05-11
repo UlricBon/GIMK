@@ -306,7 +306,8 @@ const ChatScreen = ({ route, navigation }) => {
         <View style={styles.chatHeader}>
           <Text style={styles.chatName}>{chat.name}</Text>
           <Text style={styles.timestamp}>
-            {chat.timestamp.toLocaleDateString('en-US', {
+            {chat.timestamp.toLocaleString('en-PH', {
+              timeZone: 'Asia/Manila',
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
