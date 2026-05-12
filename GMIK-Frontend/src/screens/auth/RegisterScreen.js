@@ -9,7 +9,10 @@ import {
   ScrollView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { authService } from '../../services/api';
+import { authService, settingsService } from '../../services/api';
+import { setUser, setToken } from '../../redux/authSlice';
+import { setSettings } from '../../redux/settingsSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTheme } from '../../utils/theme';
 
 const RegisterScreen = ({ navigation }) => {
@@ -41,11 +44,44 @@ const RegisterScreen = ({ navigation }) => {
     setLoading(true);
     try {
       await authService.register(email, password, displayName);
-      Alert.alert(
-        'Success',
-        'Account created! Please verify your email and login.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+
+      // Auto-login after successful registration
+      try {
+        const loginResponse = await authService.login(email, password);
+        const { accessToken, refreshToken, user } = loginResponse.data;
+
+        await AsyncStorage.multiSet([
+          ['accessToken', accessToken],
+          ['refreshToken', refreshToken],
+          ['user', JSON.stringify(user)],
+        ]);
+
+        dispatch(setToken(accessToken));
+        dispatch(setUser(user));
+
+        // Load settings after login
+        try {
+          const settingsResponse = await settingsService.getSettings();
+          const settings = settingsResponse.data?.settings || {};
+          const reduxPayload = {
+            darkMode: settings.dark_mode ?? false,
+            notifications_enabled: settings.notifications_enabled ?? true,
+            email_updates_enabled: settings.email_updates_enabled ?? true,
+            task_alerts_enabled: settings.task_alerts_enabled ?? true,
+            message_alerts_enabled: settings.message_alerts_enabled ?? true,
+            location_services: settings.location_services ?? true,
+            profile_privacy: settings.profile_privacy ?? 'public',
+            show_online_status: settings.show_online_status ?? true,
+            allow_messages: settings.allow_messages ?? true,
+          };
+          dispatch(setSettings(reduxPayload));
+        } catch (settingsError) {
+          console.log('Settings load warning:', settingsError.message);
+        }
+      } catch (loginError) {
+        const loginErrorMessage = loginError.response?.data?.error || 'Auto-login failed';
+        Alert.alert('Error', loginErrorMessage);
+      }
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Registration failed';
       Alert.alert('Error', errorMessage);

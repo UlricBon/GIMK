@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Platform,
   ActivityIndicator,
   ScrollView,
   FlatList,
@@ -53,35 +54,48 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const performLogout = async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const authKeys = keys.filter((key) =>
+        key === 'accessToken' ||
+        key === 'refreshToken' ||
+        key === 'user' ||
+        key.endsWith('/accessToken') ||
+        key.endsWith('/refreshToken') ||
+        key.endsWith('/user')
+      );
+
+      if (authKeys.length > 0) {
+        await AsyncStorage.multiRemove(authKeys);
+      }
+    } catch (error) {
+      console.error('Logout storage cleanup error:', error);
+    } finally {
+      dispatch(logout());
+      if (typeof navigation?.logout === 'function') {
+        navigation.logout();
+      }
+    }
+  };
+
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', onPress: () => {} },
-      {
-        text: 'Logout',
-        onPress: async () => {
-          try {
-            console.log('Logout confirmed - clearing storage');
-            // Clear AsyncStorage
-            await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
-            console.log('Storage cleared - dispatching logout action');
-            // Dispatch logout action
-            dispatch(logout());
-            console.log('Logout action dispatched - navigating to login');
-            // Navigate to login
-            if (navigation?.logout) {
-              navigation.logout();
-            }
-          } catch (error) {
-            console.error('Logout error:', error);
-            // Dispatch logout even if storage clear fails
-            dispatch(logout());
-            if (navigation?.logout) {
-              navigation.logout();
-            }
-          }
-        },
-      },
-    ]);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        performLogout();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: performLogout },
+      ]
+    );
   };
 
   if (loading) {

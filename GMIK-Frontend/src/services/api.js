@@ -87,6 +87,8 @@ export const userService = {
     apiClient.post(`/users/${userId}/rate`, { rating, comment }),
   updateProfile: (data) =>
     apiClient.put('/users/profile', data),
+  deleteAccount: () =>
+    apiClient.delete('/users/profile'),
 };
 
 export const messageService = {

@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
-import { settingsService } from '../../services/api';
+import { settingsService, userService } from '../../services/api';
 import { logout } from '../../redux/authSlice';
 import { setSettings } from '../../redux/settingsSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -148,25 +149,37 @@ const SettingsScreen = ({ navigation }) => {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+  const handleDeleteAccount = () => {
+    const performDelete = async () => {
+      try {
+        await userService.deleteAccount();
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+        dispatch(logout());
+        if (typeof navigation?.reset === 'function') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }
+      } catch (error) {
+        console.error('Delete account error:', error);
+        Alert.alert('Error', error.response?.data?.error || 'Failed to delete account');
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('This will permanently delete your account and data. This action cannot be undone.');
+      if (confirmed) {
+        performDelete();
+      }
+      return;
+    }
+
+    Alert.alert('Delete Account', 'This will permanently delete your account and data. This action cannot be undone.', [
       { text: 'Cancel', onPress: () => {} },
       {
-        text: 'Logout',
-        onPress: async () => {
-          try {
-            await AsyncStorage.removeItem('accessToken');
-            await AsyncStorage.removeItem('refreshToken');
-            await AsyncStorage.removeItem('user');
-            dispatch(logout());
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
-          } catch (error) {
-            console.error('Logout error:', error);
-          }
-        },
+        text: 'Delete',
+        onPress: performDelete,
         style: 'destructive',
       },
     ]);
@@ -361,10 +374,10 @@ const SettingsScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={[styles.logoutButton, { backgroundColor: theme.danger }]}
-        onPress={handleLogout}
+        onPress={handleDeleteAccount}
       >
-        <Ionicons name="log-out" size={20} color="#fff" />
-        <Text style={styles.logoutButtonText}>Logout</Text>
+        <Ionicons name="trash" size={20} color="#fff" />
+        <Text style={styles.logoutButtonText}>Delete Account</Text>
       </TouchableOpacity>
 
       <View style={{ height: 30 }} />

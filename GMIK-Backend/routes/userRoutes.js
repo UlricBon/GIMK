@@ -3,6 +3,7 @@ import {
   getUserById,
   getUserProfile, 
   updateUserProfile,
+  deleteUserAccount,
   getUserSettings,
   updateUserSettings,
   switchRole,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get('/profile', authenticateToken, getUserProfile);
 router.get('/:id', authenticateToken, getUserById);
 router.put('/profile', authenticateToken, updateUserProfile);
+router.delete('/profile', authenticateToken, deleteUserAccount);
 router.get('/settings', authenticateToken, getUserSettings);
 router.put('/settings', authenticateToken, updateUserSettings);
 router.post('/switch-role', authenticateToken, switchRole);

@@ -25,6 +25,7 @@ const LoginPage = () => {
       
       localStorage.setItem('adminToken', accessToken);
       localStorage.setItem('adminUser', JSON.stringify(response.data.user));
+      localStorage.setItem('lastActivity', Date.now().toString());
       
       toast.success('Login successful');
       navigate('/');

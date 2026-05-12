@@ -9,14 +9,16 @@ dotenv.config();
 export const register = async (req, res) => {
   try {
     const { email, password, displayName } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedDisplayName = displayName?.trim();
 
     // Validation
-    if (!email || !password || !displayName) {
+    if (!normalizedEmail || !password || !normalizedDisplayName) {
       return res.status(400).json({ error: 'Email, password, and display name required' });
     }
 
     // Check if user exists
-    const existingUser = query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingUser = query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
     if (existingUser.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered' });
     }
@@ -26,14 +28,14 @@ export const register = async (req, res) => {
 
     // Create user
     const userId = uuidv4();
-    const result = query(
-      'INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)',
-      [userId, email, hashedPassword, displayName]
+    query(
+      'INSERT INTO users (id, email, password_hash, display_name, email_verified) VALUES ($1, $2, $3, $4, $5)',
+      [userId, normalizedEmail, hashedPassword, normalizedDisplayName, 1]
     );
 
     res.status(201).json({
-      message: 'User registered successfully. Please verify your email.',
-      user: { id: userId, email, displayName }
+      message: 'User registered successfully.',
+      user: { id: userId, email: normalizedEmail, displayName: normalizedDisplayName }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -9,6 +9,7 @@ const Layout = ({ children }) => {
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');
+    localStorage.removeItem('lastActivity');
     navigate('/login');
   };
 

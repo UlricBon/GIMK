@@ -20,13 +20,22 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const dispatch = useDispatch();
   const darkMode = useSelector(state => state.settings.darkMode);
   const theme = getTheme(darkMode);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    setEmailError('');
+    setPasswordError('');
+
+    if (!email) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!password) {
+      setPasswordError('Password is required');
       return;
     }
 
@@ -48,9 +57,6 @@ const LoginScreen = ({ navigation }) => {
       try {
         const settingsResponse = await settingsService.getSettings();
         const settings = settingsResponse.data?.settings || {};
-        console.log('=== LoginScreen loaded settings ===');
-        console.log('Settings from backend:', settings);
-        console.log('dark_mode value:', settings.dark_mode, 'type:', typeof settings.dark_mode);
         
         // Convert snake_case to camelCase
         const reduxPayload = {
@@ -64,14 +70,19 @@ const LoginScreen = ({ navigation }) => {
           show_online_status: settings.show_online_status ?? true,
           allow_messages: settings.allow_messages ?? true,
         };
-        console.log('Setting Redux darkMode to:', reduxPayload.darkMode);
         dispatch(setSettings(reduxPayload));
       } catch (settingsError) {
         console.log('Settings load warning:', settingsError.message);
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Login failed';
-      Alert.alert('Error', errorMessage);
+      if (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('not found')) {
+        setEmailError(errorMessage);
+      } else if (errorMessage.toLowerCase().includes('password')) {
+        setPasswordError(errorMessage);
+      } else {
+        setEmailError(errorMessage);
+      }
       dispatch(setError(errorMessage));
     } finally {
       setLoading(false);
@@ -91,34 +102,42 @@ const LoginScreen = ({ navigation }) => {
           styles.input,
           {
             backgroundColor: theme.surface,
-            borderColor: theme.border,
+            borderColor: emailError ? '#FF6B6B' : theme.border,
             color: theme.text,
           },
         ]}
         placeholder="Email"
         placeholderTextColor={theme.textTertiary}
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(val) => {
+          setEmail(val);
+          setEmailError('');
+        }}
         keyboardType="email-address"
         editable={!loading}
       />
+      {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
       <TextInput
         style={[
           styles.input,
           {
             backgroundColor: theme.surface,
-            borderColor: theme.border,
+            borderColor: passwordError ? '#FF6B6B' : theme.border,
             color: theme.text,
           },
         ]}
         placeholder="Password"
         placeholderTextColor={theme.textTertiary}
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(val) => {
+          setPassword(val);
+          setPasswordError('');
+        }}
         secureTextEntry
         editable={!loading}
       />
+      {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
       <TouchableOpacity
         style={[
@@ -180,6 +199,13 @@ const styles = StyleSheet.create({
   link: {
     textAlign: 'center',
     fontSize: 14,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 5,
   },
 });
 

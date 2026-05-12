@@ -36,8 +36,6 @@ export const getTasks = async (req, res) => {
   try {
     const { category, search, excludeUserId } = req.query;
 
-    console.log('getTasks called with excludeUserId:', excludeUserId);
-
     let query_str = `
       SELECT t.*, u.display_name, u.completed_tasks_count
       FROM tasks t
@@ -50,7 +48,6 @@ export const getTasks = async (req, res) => {
     if (excludeUserId) {
       params.push(excludeUserId);
       query_str += ` AND t.dropper_id != ?`;
-      console.log('Adding filter - excluding user ID:', excludeUserId);
     }
 
     if (category && category !== 'All') {
@@ -66,11 +63,7 @@ export const getTasks = async (req, res) => {
 
     query_str += ` ORDER BY t.created_at DESC LIMIT 50`;
 
-    console.log('Final query:', query_str);
-    console.log('Query params:', params);
-
     const result = await query(query_str, params);
-    console.log('Tasks returned:', result.rows?.length);
     res.json({ tasks: result.rows || [] });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from './src/redux/store';
 import { setSettings } from './src/redux/settingsSlice';
 import { getTheme } from './src/utils/theme';
-import { taskService } from './src/services/api';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import TaskDetailsScreen from './src/screens/tasks/TaskDetailsScreen';
@@ -70,6 +69,9 @@ const WebAppContent = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Always start logged out.
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+
         // Load persisted settings from AsyncStorage
         const savedSettings = await AsyncStorage.getItem('userSettings');
         if (savedSettings) {
@@ -114,25 +116,7 @@ const WebAppContent = () => {
     }
   }, [isLoggedIn]);
 
-  // Poll for new posts to update notification badge
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await taskService.getTasks({ 
-          status: 'posted',
-          limit: 1
-        });
-        const newCount = response.data?.total || 0;
-        setNewPostsCount(newCount);
-      } catch (error) {
-        console.error('Error polling new posts:', error);
-      }
-    }, 10000); // Poll every 10 seconds
-
-    return () => clearInterval(pollInterval);
-  }, [isLoggedIn]);
+  // Keep this badge state event-driven instead of polling to avoid noisy background requests.
 
   if (!isLoggedIn) {
     return (
@@ -252,42 +236,53 @@ const WebAppContent = () => {
         {currentScreen === 'Profile' && <ProfileScreen navigation={{ navigate: (screen) => setProfileScreen(screen), logout: () => { setCurrentScreen('Login'); setProfileScreen(null); } }} />}
       </View>
       <View style={[styles.navbar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-        {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.navButton,
-              currentScreen === tab && { borderBottomColor: theme.primary },
-            ]}
-            onPress={() => {
-              setCurrentScreen(tab);
-              if (tab === 'Post') {
-                setLastSeenPostsCount(newPostsCount);
-              }
-            }}
-          >
-            <View style={{ position: 'relative', alignItems: 'center' }}>
-              <Text
-                style={[
-                  styles.navButtonText,
-                  {
-                    color: currentScreen === tab ? theme.primary : theme.textSecondary,
-                    fontWeight: currentScreen === tab ? '600' : '500',
-                  },
-                ]}
-              >
-                {tab === 'MyDocuments' ? 'My Docs' : tab}
-              </Text>
-              {tab === 'Post' && newPostsCount > lastSeenPostsCount && (
-                <View style={[styles.badge, { backgroundColor: theme.danger }]}>
-                  <Text style={styles.badgeText}>
-                    {newPostsCount - lastSeenPostsCount > 99 ? '99+' : newPostsCount - lastSeenPostsCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
+        {['Post', 'Browse', 'MyDocuments', 'Chat', 'Profile'].map((tab) => {
+          const getNotificationCount = (tabName) => {
+            if (tabName === 'Post') return newPostsCount > lastSeenPostsCount ? newPostsCount - lastSeenPostsCount : 0;
+            if (tabName === 'Chat') return 3;
+            if (tabName === 'Browse') return 1;
+            if (tabName === 'MyDocuments') return 0;
+            if (tabName === 'Profile') return 0;
+            return 0;
+          };
+          const notificationCount = getNotificationCount(tab);
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.navButton,
+                currentScreen === tab && { borderBottomColor: theme.primary },
+              ]}
+              onPress={() => {
+                setCurrentScreen(tab);
+                if (tab === 'Post') {
+                  setLastSeenPostsCount(newPostsCount);
+                }
+              }}
+            >
+              <View style={{ position: 'relative', alignItems: 'center' }}>
+                <Text
+                  style={[
+                    styles.navButtonText,
+                    {
+                      color: currentScreen === tab ? theme.primary : theme.textSecondary,
+                      fontWeight: currentScreen === tab ? '600' : '500',
+                    },
+                  ]}
+                >
+                  {tab === 'MyDocuments' ? 'My Docs' : tab}
+                </Text>
+                {notificationCount > 0 && (
+                  <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+                    <Text style={styles.badgeText}>
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );

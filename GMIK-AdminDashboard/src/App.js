@@ -8,8 +8,39 @@ import ActivityLogsPage from './pages/ActivityLogsPage';
 import ModerationPage from './pages/ModerationPage';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
+import { useEffect } from 'react';
 
 function App() {
+  useEffect(() => {
+    const handleActivity = () => {
+      localStorage.setItem('lastActivity', Date.now());
+    };
+
+    const checkIdleTimeout = () => {
+      const lastActivity = parseInt(localStorage.getItem('lastActivity'), 10);
+      const now = Date.now();
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      if (now - lastActivity > thirtyMinutes) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('lastActivity');
+        window.location.href = '/login';
+      }
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
+    const interval = setInterval(checkIdleTimeout, 1000);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <>
       <Toaster position="top-right" />

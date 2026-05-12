@@ -120,6 +120,31 @@ export const updateUserProfile = async (req, res) => {
   }
 };
 
+export const deleteUserAccount = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Remove rows that reference user without ON DELETE CASCADE.
+    await query(
+      `DELETE FROM payments WHERE dropper_id = $1 OR chaser_id = $1`,
+      [userId]
+    );
+
+    const result = await query(
+      `DELETE FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getUserSettings = async (req, res) => {
   try {
     const userId = req.user.userId;
